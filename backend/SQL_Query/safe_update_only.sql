@@ -856,15 +856,23 @@ BEGIN
   IF NOT EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin') THEN
     RAISE EXCEPTION 'Unauthorized';
   END IF;
-  
+
+  -- Issue 9 (audit_fixes.sql): Enforce reviewer active status server-side.
+  -- The client-side filter in AssignReviewers.jsx only shows active reviewers in the
+  -- dropdown, but this RPC check is the critical server-side enforcement that prevents
+  -- a banned/inactive reviewer from being assigned even via a direct API call.
+  IF (SELECT status FROM public.profiles WHERE id = p_reviewer_id) != 'active' THEN
+    RAISE EXCEPTION 'Cannot assign: Reviewer is not active';
+  END IF;
+
   -- Atomic check-and-insert (single transaction, no TOCTOU)
   IF EXISTS (SELECT 1 FROM public.assignments WHERE journal_id = p_journal_id FOR UPDATE) THEN
     RAISE EXCEPTION 'Journal already has a reviewer assigned';
   END IF;
-  
+
   INSERT INTO public.assignments (journal_id, reviewer_id)
   VALUES (p_journal_id, p_reviewer_id);
-  
+
   UPDATE public.journals SET status = 'under_review'
   WHERE id = p_journal_id;
 END;

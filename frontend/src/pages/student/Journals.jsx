@@ -15,19 +15,26 @@ export function StudentJournals() {
   const [journals, setJournals] = useState([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState('all')
+  const [fetchError, setFetchError] = useState(false)
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { if (user) fetchJournals() }, [user])
 
   async function fetchJournals() {
     setLoading(true)
-    const { data } = await supabase
+    setFetchError(false)
+    const { data, error } = await supabase
       .from('journals')
       .select('id, title, status, created_at')
       .eq('student_id', user.id)
       .order('created_at', { ascending: false })
       .limit(100)
-    setJournals(data ?? [])
+    if (error) {
+      console.error('StudentJournals: failed to load journals', error.message)
+      setFetchError(true)
+    } else {
+      setJournals(data ?? [])
+    }
     setLoading(false)
   }
 
@@ -77,6 +84,11 @@ export function StudentJournals() {
         <div className="card-content">
           {loading ? (
             <p className="text-sm text-muted" style={{ padding: '2rem 0' }}>Loading…</p>
+          ) : fetchError ? (
+            <div style={{ textAlign: 'center', padding: '2rem 0', color: 'var(--destructive)' }}>
+              <p className="text-sm">Failed to load submissions. Please check your connection.</p>
+              <button className="btn btn-outline btn-sm" style={{ marginTop: '0.75rem' }} onClick={fetchJournals}>Retry</button>
+            </div>
           ) : filtered.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '3rem 1rem', color: 'var(--muted-foreground)' }}>
               <p style={{ fontStyle: 'italic', fontSize: '0.95rem' }}>No journals found matching your search criteria.</p>

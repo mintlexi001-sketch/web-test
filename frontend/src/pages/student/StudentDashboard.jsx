@@ -10,6 +10,7 @@ export default function StudentDashboard() {
   const { user } = useAuth()
   const [journals, setJournals] = useState([])
   const [loading, setLoading] = useState(true)
+  const [fetchError, setFetchError] = useState(false)
 
   useEffect(() => {
     if (user) fetchJournals()
@@ -18,13 +19,19 @@ export default function StudentDashboard() {
 
   async function fetchJournals() {
     setLoading(true)
-    const { data } = await supabase
+    setFetchError(false)
+    const { data, error } = await supabase
       .from('journals')
       .select('id, title, status, created_at')
       .eq('student_id', user.id)
       .order('created_at', { ascending: false })
       .limit(10)
-    setJournals(data ?? [])
+    if (error) {
+      console.error('StudentDashboard: failed to load journals', error.message)
+      setFetchError(true)
+    } else {
+      setJournals(data ?? [])
+    }
     setLoading(false)
   }
 
@@ -85,6 +92,11 @@ export default function StudentDashboard() {
         <div className="card-content">
           {loading ? (
             <p className="text-sm text-muted">Loading…</p>
+          ) : fetchError ? (
+            <div style={{ textAlign: 'center', padding: '2rem 0', color: 'var(--destructive)' }}>
+              <p className="text-sm">Failed to load submissions. Please check your connection and try again.</p>
+              <button className="btn btn-outline btn-sm" style={{ marginTop: '0.75rem' }} onClick={fetchJournals}>Retry</button>
+            </div>
           ) : recentSubmissions.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '2rem 0', color: 'var(--muted-foreground)' }}>
               <FileText size={40} style={{ margin: '0 auto 0.75rem', opacity: 0.4 }} />

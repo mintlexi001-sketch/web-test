@@ -8,28 +8,44 @@ export default function ReviewerDashboard() {
   const { user } = useAuth()
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(true)
+  const [fetchError, setFetchError] = useState(false)
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { if (user) fetchAssigned() }, [user])
 
   async function fetchAssigned() {
     setLoading(true)
+    setFetchError(false)
 
     // Fetch assignments for this reviewer with journal info (including author name)
-    const { data: assignments } = await supabase
+    const { data: assignments, error: assignErr } = await supabase
       .from('assignments')
       .select(`journals ( id, title, review_level, created_at, profiles ( name ) )`)
       .eq('reviewer_id', user.id)
+
+    if (assignErr) {
+      console.error('ReviewerDashboard: failed to load assignments', assignErr.message)
+      setFetchError(true)
+      setLoading(false)
+      return
+    }
 
     const journals = (assignments ?? []).map(a => a.journals).filter(Boolean)
     const journalIds = journals.map(j => j.id)
 
     // Check which ones this reviewer has already reviewed
-    const { data: reviewedData } = await supabase
+    const { data: reviewedData, error: reviewErr } = await supabase
       .from('reviews')
       .select('journal_id')
       .eq('reviewer_id', user.id)
       .in('journal_id', journalIds.length ? journalIds : ['none'])
+
+    if (reviewErr) {
+      console.error('ReviewerDashboard: failed to load reviews', reviewErr.message)
+      setFetchError(true)
+      setLoading(false)
+      return
+    }
 
     const reviewedSet = new Set((reviewedData ?? []).map(r => r.journal_id))
 
@@ -89,6 +105,11 @@ export default function ReviewerDashboard() {
         <div className="card-content space-y-4">
           {loading ? (
             <p className="text-sm text-muted">Loading…</p>
+          ) : fetchError ? (
+            <div style={{ textAlign: 'center', padding: '2rem 0', color: 'var(--destructive)' }}>
+              <p className="text-sm">Failed to load assigned reviews. Please check your connection.</p>
+              <button className="btn btn-outline btn-sm" style={{ marginTop: '0.75rem' }} onClick={fetchAssigned}>Retry</button>
+            </div>
           ) : pendingJournals.length === 0 ? (
             <p className="text-sm text-muted">No assigned reviews</p>
           ) : pendingJournals.map(j => (
