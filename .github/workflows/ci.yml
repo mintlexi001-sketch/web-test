@@ -46,11 +46,11 @@ jobs:
         run: npm run lint
       - name: Production build
         env:
-          # Provide stub env vars so the fail-closed api.js guard doesn't fire during CI build.
-          # These are NOT real secrets — they're dummy values used only for the build step.
+          # Stub env vars for both fail-closed guards (api.js + supabase.js).
+          # NOT real secrets — dummy values used only for the build step.
           VITE_SUPABASE_URL: https://placeholder.supabase.co
           VITE_SUPABASE_ANON_KEY: placeholder_anon_key
-          VITE_API_URL: http://localhost:3001
+          VITE_API_URL: https://placeholder-api.example.com
           VITE_TURNSTILE_SITE_KEY: 1x00000000000000000000AA
           VITE_PERMANENT_ADMIN_EMAIL: ci@example.com
         run: npm run build

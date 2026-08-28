@@ -49,8 +49,6 @@ export default function AdminDashboard() {
     setLoading(false)
   }
 
-  }
-
   const statCards = [
     { label: 'Total Journals',  value: stats.total,    icon: FileText,    color: 'var(--primary)', change: 'All time' },
     { label: 'Total Users',     value: stats.users,    icon: Users,       color: '#2563eb',        change: 'Registered' },
