@@ -121,7 +121,7 @@ export default function UploadJournal() {
 
       // Build authors array: corresponding author (paper owner) first, then 1st author, then co-authors
       const authorsArray = [
-        { name: correspondingAuthor.trim(), role: 'corresponding', is_corresponding: true },
+        { name: correspondingAuthor.trim(), email: correspondingAuthorEmail.trim(), role: 'corresponding', is_corresponding: true },
         { name: firstAuthor.trim(), role: 'first_author', is_corresponding: false },
         ...coAuthors.filter(a => a.trim()).map(name => ({ name: name.trim(), role: 'co_author', is_corresponding: false })),
       ]

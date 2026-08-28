@@ -157,7 +157,7 @@ export function ReviewJournal() {
   async function fetchJournal() {
     setLoading(true)
     const [journalRes, reviewRes] = await Promise.all([
-      supabase.from('journals').select('*').eq('id', id).single(),
+      supabase.from('journals').select('*, profiles(name)').eq('id', id).single(),
       supabase.from('reviews').select('*').eq('journal_id', id).eq('reviewer_id', user?.id).maybeSingle(),
     ])
     setJournal(journalRes.data ?? null)

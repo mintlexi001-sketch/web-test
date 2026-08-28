@@ -481,8 +481,10 @@ export default function PublishedPapers() {
     // Server-side global search
     const q = debouncedGlobalSearch.trim()
     if (isSearch) {
+      // SEC: Strip commas and quotes to prevent PostgREST filter injection in .or() clause
+      const safeQ = q.replace(/[,"]/g, ' ')
       query = query
-        .or(`title.ilike.%${q}%,keywords.ilike.%${q}%,author_name.ilike.%${q}%`)
+        .or(`title.ilike.%${safeQ}%,keywords.ilike.%${safeQ}%,author_name.ilike.%${safeQ}%`)
         .range(pageIndex * SEARCH_PAGE_SIZE, (pageIndex + 1) * SEARCH_PAGE_SIZE - 1)
     }
     // No range limit when not searching — load all volumes at once

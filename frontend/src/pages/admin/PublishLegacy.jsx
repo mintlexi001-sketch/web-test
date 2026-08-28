@@ -68,7 +68,7 @@ export default function PublishLegacy() {
     try {
       // Build authors array
       const authorsArray = [
-        { name: correspondingAuthor.trim(), role: 'corresponding', is_corresponding: true },
+        { name: correspondingAuthor.trim(), email: correspondingAuthorEmail.trim(), role: 'corresponding', is_corresponding: true },
         { name: firstAuthor.trim(), role: 'first_author', is_corresponding: false },
         ...coAuthors.filter(a => a.trim()).map(name => ({ name: name.trim(), role: 'co_author', is_corresponding: false })),
       ]

@@ -49,11 +49,6 @@ export default function AdminDashboard() {
     setLoading(false)
   }
 
-  async function handleResolveRequest(id) {
-    const { error } = await supabase.from('paper_requests').update({ status: 'responded' }).eq('id', id)
-    if (!error) {
-      setRequests(prev => prev.filter(r => r.id !== id))
-    }
   }
 
   const statCards = [
@@ -158,9 +153,9 @@ export default function AdminDashboard() {
                   </a>
                 </div>
               </div>
-              <button className="btn btn-primary btn-sm" onClick={() => handleResolveRequest(req.id)} style={{ flexShrink: 0 }}>
-                Mark as Responded
-              </button>
+              <Link to="/admin/paper-requests" className="btn btn-primary btn-sm" style={{ flexShrink: 0 }}>
+                Review Request
+              </Link>
             </div>
           ))}
           {!loading && requests.length === 0 && <p className="text-sm text-muted">No pending paper requests.</p>}
