@@ -321,7 +321,9 @@ exports.generatePaperRequestRejectedNotification = (requesterName, journalTitle)
   intro: 'Thank you for your interest in our research. We have reviewed your request for the full paper below:',
   detailsHTML: `<p style="margin: 0;"><strong>Paper:</strong> ${journalTitle}</p>`,
   customContent: '<p>Unfortunately, we are unable to fulfill your request at this time. If you have questions, please contact the editorial board directly.</p>'
-});module.exports.generateContactNotification = (name, email, subject, message) => {
+});
+
+module.exports.generateContactNotification = (name, email, subject, message) => {
   return renderMasterTemplate({
     title: `Contact Form: ${subject}`,
     greeting: `New message from ${name}`,

@@ -72,7 +72,7 @@ create table public.journals (
   keywords     text not null,
   file_url     text,
   status       text not null default 'submitted'
-                 check (status in ('submitted', 'under_review', 'approved', 'revision_required', 'rejected')),
+                 check (status in ('submitted', 'under_review', 'approved', 'revision_required', 'rejected', 'accepted', 'rework', 'published')),
   review_level int not null default 0,
   admin_comments     text,
   revision_report_url text,
@@ -82,6 +82,11 @@ create table public.journals (
   prev_revision_report_url text,
   prev_reviewer_comments   text,
   prev_reviewer_name       text,
+  -- Publication metadata (populated when admin compiles/publishes a paper)
+  authors        text,
+  volume_number  text,
+  issue_number   text,
+  published_at   timestamptz,
   created_at   timestamptz default now()
 );
 
@@ -130,6 +135,9 @@ create table public.reviews (
   id          uuid primary key default gen_random_uuid(),
   journal_id  uuid references public.journals(id) on delete cascade,
   reviewer_id uuid references public.profiles(id) on delete cascade,
+  -- NOTE: 'decision' is reserved for a future feature where reviewers give a formal recommendation.
+  -- The current reviewer submission UI always writes NULL here; the admin's decision is handled
+  -- separately via the admin_make_decision() RPC. Do not remove this column without a product decision.
   decision    text check (decision in ('approve', 'revision', 'reject')),
   comments    text not null,
   originality int check (originality between 1 and 5),

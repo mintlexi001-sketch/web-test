@@ -86,7 +86,6 @@ export default function PaperDetail() {
     setSubmitting(true)
     try {
       // SEC-002: paper_requests insert is now handled securely in the backend AFTER CAPTCHA validation.
-      let emailFailed = false;
       const res = await sendNotification('/api/notify/paper-request', {
         journalId: paper.id, // Passed to backend for insert
         requesterName: form.name.trim(),
@@ -97,11 +96,10 @@ export default function PaperDetail() {
         website_url: form.website_url, // HONEYPOT
         turnstileToken
       })
-      if (!res || !res.ok) emailFailed = true;
-
-      setSubmitted(true)
-      if (emailFailed) {
-        toast.error('Request submitted, but failed to notify admins via email. They can still see it in the dashboard.', { duration: 5000 })
+      if (!res || !res.ok) {
+        toast.error('Failed to submit request. Please try again.')
+      } else {
+        setSubmitted(true)
       }
     } catch (err) {
       console.error(err)

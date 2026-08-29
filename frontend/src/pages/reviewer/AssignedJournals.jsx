@@ -13,6 +13,8 @@ const statusLabels = {
   revision_required: 'Revision Required',
   rework: 'Revision Required',
 }
+// Helper: always return a displayable label — defensive default for any future status added
+const getStatusLabel = (status) => statusLabels[status] ?? 'In Progress'
 // Statuses that are admin-only and must not be shown to reviewers
 const adminOnlyStatuses = new Set(['approved', 'accepted', 'published', 'rejected'])
 
@@ -110,7 +112,7 @@ export function AssignedJournals() {
                     className={adminOnlyStatuses.has(j.status) ? 'status-under_review' : `status-${j.status}`}
                     style={{ display: 'block', marginBottom: '0.25rem' }}
                   >
-                    {adminOnlyStatuses.has(j.status) ? 'Decision Recorded' : (statusLabels[j.status] || j.status)}
+                    {adminOnlyStatuses.has(j.status) ? 'Decision Recorded' : getStatusLabel(j.status)}
                   </span>
                   <span style={{ fontSize: '0.65rem', color: 'var(--muted-foreground)', textTransform: 'uppercase', letterSpacing: '0.02em' }}>
                     Your Review: {j.reviewStatus === 'completed' ? 'Done' : 'Assigned'}

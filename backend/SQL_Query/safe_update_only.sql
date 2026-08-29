@@ -908,4 +908,127 @@ DROP POLICY IF EXISTS "Users can delete own notifications" ON public.notificatio
 CREATE POLICY "Users can delete own notifications" ON public.notifications
   FOR DELETE USING ((select auth.uid()) = user_id);
 
+-- ============================================================
+-- 16. CORE EDITORIAL RPCs
+-- (Merged from audit_fixes.sql — required for production editorial workflow)
+-- These functions were previously only defined in audit_fixes.sql, which is
+-- documented as a historical archive. They are now canonical here so that a
+-- fresh install following the documented setup path produces a fully functional app.
+-- ============================================================
+
+-- 16a. Assign reviewer (with active-status guard + TOCTOU-safe atomic check)
+CREATE OR REPLACE FUNCTION public.assign_reviewer_to_journal(
+  p_journal_id uuid,
+  p_reviewer_id uuid
+) RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin') THEN
+    RAISE EXCEPTION 'Unauthorized';
+  END IF;
+  IF (SELECT status FROM public.profiles WHERE id = p_reviewer_id) != 'active' THEN
+    RAISE EXCEPTION 'Cannot assign: Reviewer is not active';
+  END IF;
+  -- Atomic check-and-insert (single transaction, no TOCTOU)
+  IF EXISTS (SELECT 1 FROM public.assignments WHERE journal_id = p_journal_id FOR UPDATE) THEN
+    RAISE EXCEPTION 'Journal already has a reviewer assigned';
+  END IF;
+  INSERT INTO public.assignments (journal_id, reviewer_id) VALUES (p_journal_id, p_reviewer_id);
+  UPDATE public.journals SET status = 'under_review' WHERE id = p_journal_id;
+END;
+$$;
+REVOKE EXECUTE ON FUNCTION public.assign_reviewer_to_journal(uuid, uuid) FROM public;
+GRANT  EXECUTE ON FUNCTION public.assign_reviewer_to_journal(uuid, uuid) TO authenticated;
+
+-- 16b. Unpublish a published paper (reverts to accepted, clears publication metadata)
+CREATE OR REPLACE FUNCTION public.unpublish_journal(
+  p_journal_id uuid
+) RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin') THEN
+    RAISE EXCEPTION 'Unauthorized';
+  END IF;
+  IF (SELECT status FROM public.journals WHERE id = p_journal_id) != 'published' THEN
+    RAISE EXCEPTION 'Cannot unpublish: Journal is not currently published';
+  END IF;
+  UPDATE public.journals SET
+    status = 'accepted',
+    published_at = NULL,
+    volume_number = NULL,
+    issue_number = NULL
+  WHERE id = p_journal_id;
+END;
+$$;
+REVOKE EXECUTE ON FUNCTION public.unpublish_journal(uuid) FROM public;
+GRANT  EXECUTE ON FUNCTION public.unpublish_journal(uuid) TO authenticated;
+
+-- 16c. Admin editorial decision (accept / reject / rework) with status whitelist
+CREATE OR REPLACE FUNCTION public.admin_make_decision(
+  p_journal_id uuid,
+  p_status text,
+  p_admin_comments text,
+  p_approval_proof_url text,
+  p_revision_report_url text
+) RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin') THEN
+    RAISE EXCEPTION 'Unauthorized';
+  END IF;
+  IF p_status NOT IN ('accepted', 'rejected', 'rework') THEN
+    RAISE EXCEPTION 'Invalid decision status. Allowed: accepted, rejected, rework';
+  END IF;
+  UPDATE public.journals SET
+    status = p_status,
+    admin_comments = p_admin_comments,
+    approval_proof_url = p_approval_proof_url,
+    revision_report_url = p_revision_report_url
+  WHERE id = p_journal_id;
+END;
+$$;
+REVOKE EXECUTE ON FUNCTION public.admin_make_decision(uuid, text, text, text, text) FROM public;
+GRANT  EXECUTE ON FUNCTION public.admin_make_decision(uuid, text, text, text, text) TO authenticated;
+
+-- 16d. Unassign reviewer (reverts journal to submitted if no reviewers remain)
+CREATE OR REPLACE FUNCTION public.unassign_reviewer_from_journal(
+  p_journal_id uuid,
+  p_assignment_id uuid
+) RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin') THEN
+    RAISE EXCEPTION 'Unauthorized';
+  END IF;
+  DELETE FROM public.assignments WHERE id = p_assignment_id AND journal_id = p_journal_id;
+  IF NOT EXISTS (SELECT 1 FROM public.assignments WHERE journal_id = p_journal_id) THEN
+    UPDATE public.journals SET status = 'submitted' WHERE id = p_journal_id;
+  END IF;
+END;
+$$;
+REVOKE EXECUTE ON FUNCTION public.unassign_reviewer_from_journal(uuid, uuid) FROM public;
+GRANT  EXECUTE ON FUNCTION public.unassign_reviewer_from_journal(uuid, uuid) TO authenticated;
+
+-- 16e. Compile & publish a batch of accepted papers into a volume/issue
+CREATE OR REPLACE FUNCTION public.admin_compile_issue(
+  p_volume text,
+  p_issue text,
+  p_journal_ids uuid[]
+) RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin') THEN
+    RAISE EXCEPTION 'Unauthorized';
+  END IF;
+  UPDATE public.journals SET
+    volume_number = p_volume,
+    issue_number = p_issue,
+    status = 'published',
+    published_at = now()
+  WHERE id = ANY(p_journal_ids);
+  UPDATE public.current_issue SET
+    volume_number = p_volume,
+    issue_number = p_issue
+  WHERE id = 1;
+END;
+$$;
+REVOKE EXECUTE ON FUNCTION public.admin_compile_issue(text, text, uuid[]) FROM public;
+GRANT  EXECUTE ON FUNCTION public.admin_compile_issue(text, text, uuid[]) TO authenticated;
+
 COMMIT;
+

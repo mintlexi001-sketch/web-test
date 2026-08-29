@@ -132,7 +132,7 @@ export default function AdminUsers() {
     if (error) {
       toast.error('Failed to delete user: ' + error.message)
     } else {
-      const res = await sendNotification('/api/notify/delete-account', { userEmail: user.email, userName: user.name, role: user.role });
+      const res = await sendNotification('/api/notify/delete-account', { userId: user.id, userName: user.name, role: user.role });
       const emailFailed = !res || !res.ok;
       if (emailFailed) {
         toast.error('User deleted, but failed to send email notification.', { duration: 5000 });
