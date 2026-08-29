@@ -51,7 +51,7 @@ export default function AdminUsers() {
       toast.error('Failed to approve user: ' + error.message)
     } else {
       // Send approval email securely
-      const res = await sendNotification('/api/notify/reviewer-approved', { userEmail: user.email, userName: user.name });
+      const res = await sendNotification('/api/notify/reviewer-approved', { userId: user.id, userName: user.name });
       if (!res || !res.ok) {
         toast.error('Reviewer approved, but failed to send email notification.', { duration: 5000 });
       } else {
@@ -69,7 +69,7 @@ export default function AdminUsers() {
     if (error) {
       toast.error('Failed to reject user: ' + error.message)
     } else {
-      const res = await sendNotification('/api/notify/reviewer-rejected', { userEmail: user.email, userName: user.name });
+      const res = await sendNotification('/api/notify/reviewer-rejected', { userId: user.id, userName: user.name });
       const emailFailed = !res || !res.ok;
       if (emailFailed) {
         toast.error('Reviewer rejected, but failed to send email notification.', { duration: 5000 });

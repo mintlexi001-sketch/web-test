@@ -44,6 +44,10 @@ exports.resubmitJournal = async (req, res) => {
       return res.status(400).json({ error: 'Missing required fields' });
     }
 
+    if (title.length > 255) return res.status(400).json({ error: 'Title is too long (max 255 characters)' });
+    if (abstract.length > 5000) return res.status(400).json({ error: 'Abstract is too long (max 5000 characters)' });
+    if (keywords && keywords.length > 500) return res.status(400).json({ error: 'Keywords are too long (max 500 characters)' });
+
     // 1. Verify the caller actually owns this journal
     const { data: journal, error: fetchErr } = await supabase
       .from('journals')

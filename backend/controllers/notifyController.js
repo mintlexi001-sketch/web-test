@@ -289,19 +289,27 @@ exports.notifyAccountDeleted = async (req, res) => {
 
 exports.notifyReviewerApproved = async (req, res) => {
   if (!await checkAdmin(req.user?.id)) return res.status(403).json({ error: 'Forbidden' });
-  const { userEmail, userName } = req.body;
-  if (!userEmail) return res.status(400).json({ error: 'User email required' });
+  const { userId, userName } = req.body;
+  if (!userId) return res.status(400).json({ error: 'User ID required' });
+  
+  const resolvedEmail = await getEmailForUser(userId);
+  if (!resolvedEmail) return res.status(404).json({ error: 'Could not resolve user email' });
+
   const html = generateReviewerApprovalNotification(esc(userName));
-  const sent = await sendMail(userEmail, 'Reviewer Application Approved', html);
+  const sent = await sendMail(resolvedEmail, 'Reviewer Application Approved', html);
   res.status(sent ? 200 : 500).json({ success: sent });
 };
 
 exports.notifyReviewerRejected = async (req, res) => {
   if (!await checkAdmin(req.user?.id)) return res.status(403).json({ error: 'Forbidden' });
-  const { userEmail, userName } = req.body;
-  if (!userEmail) return res.status(400).json({ error: 'User email required' });
+  const { userId, userName } = req.body;
+  if (!userId) return res.status(400).json({ error: 'User ID required' });
+  
+  const resolvedEmail = await getEmailForUser(userId);
+  if (!resolvedEmail) return res.status(404).json({ error: 'Could not resolve user email' });
+
   const html = generateReviewerRejectionNotification(esc(userName));
-  const sent = await sendMail(userEmail, 'Reviewer Application Status', html);
+  const sent = await sendMail(resolvedEmail, 'Reviewer Application Status', html);
   res.status(sent ? 200 : 500).json({ success: sent });
 };
 

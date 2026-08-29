@@ -164,9 +164,9 @@ create policy "Reviewers and Admins can update reviews" on public.reviews for up
 -- Students and anyone else cannot delete reviews (IDOR fix)
 
 -- 5. Storage bucket for PDFs
--- Run in Supabase dashboard → Storage → Create bucket named "journals" (public)
+-- Run in Supabase dashboard → Storage → Create bucket named "journals" (private)
 -- Or via SQL:
-insert into storage.buckets (id, name, public) values ('journals', 'journals', true)
+insert into storage.buckets (id, name, public) values ('journals', 'journals', false)
   on conflict do nothing;
 
 drop policy if exists "Anyone can read journal files" on storage.objects;

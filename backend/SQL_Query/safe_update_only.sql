@@ -238,8 +238,12 @@ CREATE POLICY "Admins can insert journals" ON public.journals
 -- to ensure Storage RLS is evaluated and confidentiality of manuscripts is preserved.
 -- Dead code removed: abstract is plain text in this app, not a storage path.
 
-INSERT INTO storage.buckets (id, name, public) VALUES ('journals', 'journals', false)
-ON CONFLICT (id) DO UPDATE SET public = false;
+INSERT INTO storage.buckets (id, name, public, allowed_mime_types, file_size_limit) 
+VALUES ('journals', 'journals', false, ARRAY['application/pdf']::text[], 10485760)
+ON CONFLICT (id) DO UPDATE SET 
+  public = false,
+  allowed_mime_types = ARRAY['application/pdf']::text[],
+  file_size_limit = 10485760;
 
 -- READ POLICY: Owner, admin, assigned reviewer, or the paper's own student
 DROP POLICY IF EXISTS "Anyone can read journal files" ON storage.objects;
