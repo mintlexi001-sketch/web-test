@@ -1,8 +1,22 @@
+require('dotenv').config();
+const Sentry = require('@sentry/node');
+const { nodeProfilingIntegration } = require('@sentry/profiling-node');
+
+if (process.env.SENTRY_DSN) {
+  Sentry.init({
+    dsn: process.env.SENTRY_DSN,
+    integrations: [
+      nodeProfilingIntegration(),
+    ],
+    tracesSampleRate: 1.0,
+    profilesSampleRate: 1.0,
+  });
+}
+
 const express = require('express');
 const cors = require('cors');
 const rateLimit = require('express-rate-limit');
 const helmet = require('helmet');
-require('dotenv').config();
 
 const { sendRegisterOTP, verifyRegisterOTP, sendResetOTP, verifyResetOTP, sendEmailChangeOTP, verifyEmailChangeOTP, cancelDeletion } = require('./controllers/authController');
 const { notifyUpload, notifyAssign, notifyReview, notifyDecision, notifyBan, notifyUnban, notifyAccountDeleted, notifyReviewerApproved, notifyReviewerRejected, notifySentForReview, notifyRework, notifyResubmit, notifyPublish, notifyPaperRequest, notifyPaperRequestRejected, notifyPaperDelivery, notifyPaperDeleted, notifyContact, replyContact } = require('./controllers/notifyController');
@@ -270,6 +284,10 @@ app.post('/api/student/journals/:id/delete', requireAuth, async (req, res) => {
 });
 
 // Global Error Handler to prevent stack trace leaks
+if (process.env.SENTRY_DSN) {
+  Sentry.setupExpressErrorHandler(app);
+}
+
 app.use((err, req, res, next) => {
   console.error('Unhandled Error:', err.message);
   res.status(500).json({ error: 'Internal Server Error' });

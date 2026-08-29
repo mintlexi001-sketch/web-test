@@ -19,7 +19,8 @@ const {
   generatePaperRequestRejectedNotification,
   generatePaperDeletedNotification,
   generateContactNotification,
-  generateContactReply
+  generateContactReply,
+  escHtml
 } = require('../utils/emailTemplates');
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
@@ -34,7 +35,9 @@ const getEmailForUser = async (userId) => {
   return profile?.email || null;
 };
 
-const esc = (str) => String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+// esc is the canonical HTML-escape helper. Imported from emailTemplates.js
+// so all backend email code shares a single source of truth.
+const esc = escHtml;
 
 
 const checkAdmin = async (userId) => {

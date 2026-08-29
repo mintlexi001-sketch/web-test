@@ -6,6 +6,21 @@ import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../context/AuthContext'
 import { sendNotification } from '../../lib/api'
 
+/** Reads the first 5 bytes of a File and checks for the %PDF- magic number. */
+const isPdfMagicBytes = (file) =>
+  new Promise((resolve) => {
+    const reader = new FileReader()
+    reader.onloadend = (e) => {
+      const bytes = new Uint8Array(e.target.result)
+      // %PDF- = 0x25 0x50 0x44 0x46 0x2D
+      resolve(
+        bytes[0] === 0x25 && bytes[1] === 0x50 &&
+        bytes[2] === 0x44 && bytes[3] === 0x46 && bytes[4] === 0x2D
+      )
+    }
+    reader.readAsArrayBuffer(file.slice(0, 5))
+  })
+
 export default function UploadJournal() {
   const navigate = useNavigate()
   const toast = useToast()
@@ -75,21 +90,25 @@ export default function UploadJournal() {
     setDragActive(e.type === 'dragenter' || e.type === 'dragover')
   }, [])
 
-  const handleDrop = useCallback((e) => {
+  const handleDrop = useCallback(async (e) => {
     e.preventDefault(); e.stopPropagation()
     setDragActive(false)
     const dropped = e.dataTransfer.files?.[0]
     if (!dropped) return
     if (dropped.type !== 'application/pdf') return toast.error('Please upload a PDF file')
     if (dropped.size > 10 * 1024 * 1024) return toast.error('File must be less than 10MB')
+    const validPdf = await isPdfMagicBytes(dropped)
+    if (!validPdf) return toast.error('File does not appear to be a valid PDF')
     setFile(dropped)
   }, [toast])
 
-  const handleFileChange = (e) => {
+  const handleFileChange = async (e) => {
     const selected = e.target.files?.[0]
     if (!selected) return
     if (selected.type !== 'application/pdf') return toast.error('Please upload a PDF file')
     if (selected.size > 10 * 1024 * 1024) return toast.error('File must be less than 10MB')
+    const validPdf = await isPdfMagicBytes(selected)
+    if (!validPdf) return toast.error('File does not appear to be a valid PDF')
     setFile(selected)
   }
 

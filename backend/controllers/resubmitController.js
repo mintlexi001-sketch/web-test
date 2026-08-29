@@ -1,6 +1,6 @@
 const { createClient } = require('@supabase/supabase-js');
 const { sendMail } = require('../utils/mailer');
-const { generateReworkResubmittedNotification } = require('../utils/emailTemplates');
+const { generateReworkResubmittedNotification, escHtml } = require('../utils/emailTemplates');
 
 // Service-role client — bypasses RLS
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
@@ -13,7 +13,8 @@ const notifyAdminsInApp = async (title, message, link) => {
   }
 };
 
-const esc = (str) => String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+// esc is the canonical HTML-escape helper — imported from emailTemplates.js.
+const esc = escHtml;
 
 
 /**

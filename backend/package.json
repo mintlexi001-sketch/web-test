@@ -5,13 +5,21 @@
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "vitest run --reporter=verbose",
+    "test:watch": "vitest --reporter=verbose"
+  },
+  "vitest": {
+    "environment": "node",
+    "pool": "forks",
+    "globals": true
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
+    "@sentry/node": "^10.72.0",
+    "@sentry/profiling-node": "^10.72.0",
     "@supabase/supabase-js": "^2.109.0",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
@@ -19,5 +27,9 @@
     "express-rate-limit": "^8.5.2",
     "helmet": "^8.2.0",
     "nodemailer": "^9.0.3"
+  },
+  "devDependencies": {
+    "supertest": "^7.2.2",
+    "vitest": "^4.1.11"
   }
 }

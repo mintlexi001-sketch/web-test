@@ -35,7 +35,7 @@ export default [
         "warn",
         { allowConstantExport: true },
       ],
-      "no-unused-vars": "warn",
+      "no-unused-vars": "error",
       "react/react-in-jsx-scope": "off",
       "react/prop-types": "off",
       "react/no-unescaped-entities": "off"

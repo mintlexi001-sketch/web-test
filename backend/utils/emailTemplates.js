@@ -4,6 +4,23 @@ const APP_URL = process.env.APP_URL || 'http://localhost:5173';
 const YEAR = new Date().getFullYear();
 
 /**
+ * HTML-escapes a string for safe interpolation into email template HTML.
+ * This is the canonical escaping function for the entire backend email layer.
+ * Import and use this in every controller rather than defining a local copy.
+ * Future template functions must ALWAYS wrap caller-supplied strings with this
+ * before interpolating them — the template layer enforces safety, not just callers.
+ */
+const escHtml = (str) =>
+  String(str || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+
+exports.escHtml = escHtml;
+
+/**
  * The single, reusable master HTML email template.
  * Uses a robust table-based layout for maximum client compatibility (Gmail, Outlook, Mobile).
  */
