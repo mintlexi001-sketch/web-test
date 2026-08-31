@@ -293,13 +293,13 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: 'Internal Server Error' });
 });
 
-// Export app so Supertest (vitest) can import it without starting a server
+// Export Express app for Vercel and tests
 module.exports = app;
 
-// Start Express server on Render (persistent host — bind 0.0.0.0 for external traffic).
-// Skip listen() during test runs so the test suite doesn't occupy a port.
-if (process.env.NODE_ENV !== 'test') {
+// Start local/persistent server only when running outside Vercel
+if (process.env.VERCEL !== '1' && process.env.NODE_ENV !== 'test') {
   const PORT = process.env.PORT || 3001;
+
   app.listen(PORT, '0.0.0.0', () => {
     console.log(`Email & Auth Server running on port ${PORT}`);
   });
