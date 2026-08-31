@@ -293,15 +293,11 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: 'Internal Server Error' });
 });
 
-// Note: /health is already registered above (line 42). This duplicate is intentionally removed.
+// Note: /health is already registered above. This duplicate comment is intentionally removed.
 
-// Export app for Vercel serverless (Vercel calls the handler directly, no listen needed)
-module.exports = app;
+// Start Express server (Render/Railway persistent host — always listen on 0.0.0.0)
+const PORT = process.env.PORT || 3001;
 
-// Start the server locally only (not on Vercel)
-if (process.env.NODE_ENV !== 'production') {
-  const PORT = process.env.PORT || 3001;
-  app.listen(PORT, () => {
-    console.log(`Email & Auth Server running on port ${PORT}`);
-  });
-}
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`Email & Auth Server running on port ${PORT}`);
+});
