@@ -56,11 +56,12 @@ function CurrentIssueBox({ papers, viewAllLink }) {
 
   useEffect(() => {
     if (papers.length <= 1) return
+    let timeoutId;
     const timer = setInterval(() => {
       setFade(false)
-      setTimeout(() => { setIdx(prev => (prev + 1) % papers.length); setFade(true) }, 320)
+      timeoutId = setTimeout(() => { setIdx(prev => (prev + 1) % papers.length); setFade(true) }, 320)
     }, 5000)
-    return () => clearInterval(timer)
+    return () => { clearInterval(timer); clearTimeout(timeoutId); }
   }, [papers.length])
 
   if (papers.length === 0) return null
@@ -128,11 +129,12 @@ function PreviousIssueBox({ papers, viewAllLink }) {
 
   useEffect(() => {
     if (papers.length <= 1) return
+    let timeoutId;
     const timer = setInterval(() => {
       setFade(false)
-      setTimeout(() => { setIdx(prev => (prev + 1) % papers.length); setFade(true) }, 320)
+      timeoutId = setTimeout(() => { setIdx(prev => (prev + 1) % papers.length); setFade(true) }, 320)
     }, 4500)
-    return () => clearInterval(timer)
+    return () => { clearInterval(timer); clearTimeout(timeoutId); }
   }, [papers.length])
 
   if (papers.length === 0) return null
@@ -200,11 +202,12 @@ function FutureIssueBox({ papers, viewAllLink }) {
 
   useEffect(() => {
     if (papers.length <= 1) return
+    let timeoutId;
     const timer = setInterval(() => {
       setFade(false)
-      setTimeout(() => { setIdx(prev => (prev + 1) % papers.length); setFade(true) }, 320)
+      timeoutId = setTimeout(() => { setIdx(prev => (prev + 1) % papers.length); setFade(true) }, 320)
     }, 4500)
-    return () => clearInterval(timer)
+    return () => { clearInterval(timer); clearTimeout(timeoutId); }
   }, [papers.length])
 
   if (papers.length === 0) return null
@@ -309,7 +312,7 @@ function useIssueData() {
    About Features
 ───────────────────────────────────────────────────────────────────── */
 const features = [
-  { title: 'Secure Submission', description: 'End-to-end encrypted submissions ensuring your research remains confidential throughout the review process.' },
+  { title: 'Secure Submission', description: 'Secure submissions ensuring your research remains confidential throughout the review process.' },
   { title: 'Expert Reviewers', description: 'Multi-level review by domain experts ensuring thorough evaluation and constructive feedback.' },
   { title: 'Fast Turnaround', description: 'Streamlined workflow with real-time status tracking for quick and transparent review cycles.' },
   { title: 'Quality Standards', description: 'Rigorous academic standards maintained through our comprehensive peer review process.' },

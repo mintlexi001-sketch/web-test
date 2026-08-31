@@ -155,7 +155,10 @@ export default function UploadJournal() {
         authors: authorsArray,
         review_level: 0,
       })
-      if (insertError) throw insertError
+      if (insertError) {
+        await supabase.storage.from('journals').remove([fileStoragePath]).catch(() => {})
+        throw insertError
+      }
 
       // Send admin notification securely
       let emailFailed = false;

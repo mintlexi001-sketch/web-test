@@ -352,7 +352,7 @@ exports.notifyPublish = async (req, res) => {
   if (!studentEmail) return res.status(404).json({ error: 'Author not found' });
 
   const APP_URL = process.env.APP_URL || 'http://localhost:5173';
-  const paperLink = `${APP_URL}/paper/${paperId}`;
+  const paperLink = `${APP_URL}/paper/${encodeURIComponent(paperId)}`;
   const html = generatePublishedNotification(esc(studentName), esc(journalTitle), paperLink);
   await sendMail(studentEmail, 'Your Paper Has Been Published!', html);
   await insertNotification(studentId, 'Paper Published!', `Your paper "${journalTitle}" is now live on the platform.`, `/paper/${paperId}`);

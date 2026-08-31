@@ -94,18 +94,22 @@ function PaperCard({ paper, index }) {
 export default function FutureIssues() {
   const [papers, setPapers] = useState([])
   const [loading, setLoading] = useState(true)
+  const [fetchError, setFetchError] = useState(false)
 
   useEffect(() => { fetchPapers() }, [])
 
   async function fetchPapers() {
     setLoading(true)
+    setFetchError(false)
     const { data, error } = await supabase
       .from('published_issues')
       .select('id, title, abstract, keywords, authors, author_name, volume_number, issue_number, published_at, created_at')
       .is('volume_number', null)
       .order('published_at', { ascending: false })
       
-    if (!error && data) {
+    if (error) {
+      setFetchError(true)
+    } else if (data) {
       setPapers(data)
     }
     setLoading(false)
@@ -152,6 +156,11 @@ export default function FutureIssues() {
               <div style={{ textAlign: 'center', padding: '4rem 1rem' }}>
                 <div className="spinner" style={{ margin: '0 auto 1rem' }} />
                 <p className="text-muted">Loading articles in press...</p>
+              </div>
+            ) : fetchError ? (
+              <div style={{ textAlign: 'center', padding: '4rem 1rem', color: 'var(--destructive)' }}>
+                <p style={{ marginBottom: '1rem' }}>Failed to load articles. Please try again.</p>
+                <button className="btn btn-outline" onClick={fetchPapers}>Retry</button>
               </div>
             ) : papers.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '5rem 1rem', color: 'var(--muted-foreground)' }}>

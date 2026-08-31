@@ -46,7 +46,7 @@ export default function AdminUsers() {
 
   async function approveUser(user) {
     setActionLoading(user.id)
-    const { error } = await supabase.rpc('approve_reviewer', { target_user_id: user.id })
+    const { error } = await supabase.rpc('approve_reviewer', { p_user_id: user.id })
     if (error) {
       toast.error('Failed to approve user: ' + error.message)
     } else {

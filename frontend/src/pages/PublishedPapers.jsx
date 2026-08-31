@@ -448,6 +448,7 @@ export default function PublishedPapers() {
   const [hasMore, setHasMore] = useState(false)
   const [loadingMore, setLoadingMore] = useState(false)
   const SEARCH_PAGE_SIZE = 30
+  const BROWSE_PAGE_SIZE = 200
 
   const selectedVol = searchParams.get('vol') || ''
   const selectedIss = searchParams.get('iss') || ''
@@ -486,15 +487,16 @@ export default function PublishedPapers() {
       query = query
         .or(`title.ilike.%${safeQ}%,keywords.ilike.%${safeQ}%,author_name.ilike.%${safeQ}%`)
         .range(pageIndex * SEARCH_PAGE_SIZE, (pageIndex + 1) * SEARCH_PAGE_SIZE - 1)
+    } else {
+      query = query.range(pageIndex * BROWSE_PAGE_SIZE, (pageIndex + 1) * BROWSE_PAGE_SIZE - 1)
     }
-    // No range limit when not searching — load all volumes at once
 
     const { data, error } = await query
 
     if (!error && data) {
       if (append) setPapers(prev => [...prev, ...data])
       else setPapers(data)
-      setHasMore(isSearch && data.length === SEARCH_PAGE_SIZE)
+      setHasMore(isSearch ? data.length === SEARCH_PAGE_SIZE : data.length === BROWSE_PAGE_SIZE)
     }
 
     setLoading(false)
@@ -607,6 +609,13 @@ export default function PublishedPapers() {
       ) : (
         <>
           <VolumeGrid volumes={volumes} onSelectIssue={handleSelectIssue} />
+          {hasMore && (
+            <div style={{ textAlign: 'center', paddingBottom: '3rem' }}>
+              <button className="btn btn-outline" onClick={() => setPage(p => p + 1)} disabled={loadingMore}>
+                {loadingMore ? 'Loading...' : 'Load Older Volumes'}
+              </button>
+            </div>
+          )}
         </>
       )}
     </>

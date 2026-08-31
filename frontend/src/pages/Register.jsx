@@ -8,7 +8,7 @@ import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/Toast';
 
 export default function Register() {
-  const [form, setForm] = useState({ name: '', email: '', role: '', password: '', confirmPassword: '', adminCode: '' });
+  const [form, setForm] = useState({ name: '', email: '', role: '', password: '', confirmPassword: '' });
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
   const [otpStep, setOtpStep] = useState(false);
@@ -35,7 +35,7 @@ export default function Register() {
       if (!otpValue.trim()) return toast.error('Please enter the OTP');
       setLoading(true);
       try {
-        await verifyRegisterOTP(form.email, otpValue, form.password, form.name, form.role, form.adminCode);
+        await verifyRegisterOTP(form.email, otpValue, form.password, form.name, form.role);
         if (form.role !== 'reviewer') {
           await signIn(form.email, form.password);
         }
@@ -54,9 +54,6 @@ export default function Register() {
     if (!form.name.trim()) newErrors.name = true;
     if (!form.email.trim()) newErrors.email = true;
     if (!form.role) newErrors.role = true;
-    if (form.role === 'admin') {
-      if (!form.adminCode) { newErrors.adminCode = true; toast.error('Admin secret code is required'); }
-    }
 
     const pwdErr = validatePassword(form.password);
     if (pwdErr) { newErrors.password = true; toast.error(pwdErr); }
@@ -70,7 +67,7 @@ export default function Register() {
 
     setLoading(true);
     try {
-      await requestRegisterOTP(form.email, form.role, form.adminCode, turnstileToken);
+      await requestRegisterOTP(form.email, form.role, undefined, turnstileToken);
       toast.success('OTP sent to your email!');
       setOtpStep(true);
     } catch (err) {

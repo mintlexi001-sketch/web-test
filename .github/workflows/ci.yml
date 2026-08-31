@@ -24,6 +24,8 @@ jobs:
         run: npm ci
       - name: Security audit (fail on high/critical)
         run: npm audit --audit-level=high
+      - name: Run tests
+        run: npm test
 
   frontend:
     name: Frontend — Audit, Lint & Build

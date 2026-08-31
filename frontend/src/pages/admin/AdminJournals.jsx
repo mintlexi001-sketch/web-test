@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Search } from 'lucide-react'
 import { useToast } from '../../components/Toast'
+import ConfirmModal from '../../components/ConfirmModal'
 import { supabase } from '../../lib/supabase'
 import { sendNotification } from '../../lib/api'
 
@@ -18,8 +19,10 @@ export default function AdminJournals() {
   const navigate = useNavigate()
   const [journals, setJournals] = useState([])
   const [loading, setLoading] = useState(true)
-  const [search, setSearch] = useState('')
   const [filter, setFilter] = useState('all')
+  const [search, setSearch] = useState('')
+  const [confirmState, setConfirmState] = useState(null)
+  const [actionLoading, setActionLoading] = useState(false)
 
   // eslint-disable-next-line react-hooks/exhaustive-deps -- fetchJournals is stable and intentionally mount-only
   useEffect(() => { fetchJournals() }, [])
@@ -83,10 +86,7 @@ export default function AdminJournals() {
   })
 
   async function handleDeletePublished(journalId, studentId, studentName, title) {
-    if (!window.confirm(`WARNING: Are you sure you want to PERMANENTLY delete the published paper "${title}"? This cannot be undone.`)) {
-      return
-    }
-
+    setActionLoading(true)
     try {
       // 1. Delete from Supabase via Secure Backend Route
       const res = await sendNotification(`/api/admin/journals/${journalId}/delete`, {})
@@ -115,13 +115,12 @@ export default function AdminJournals() {
       console.error(err)
       toast.error('Failed to delete paper')
     }
+    setActionLoading(false)
+    setConfirmState(null)
   }
 
-  async function handleUnpublish(journalId, title) {
-    if (!window.confirm(`Are you sure you want to unpublish the paper "${title}"? It will be moved back to the Accepted Papers list.`)) {
-      return
-    }
-
+  async function handleUnpublish(journalId) {
+    setActionLoading(true)
     try {
       const { error } = await supabase.rpc('unpublish_journal', {
         p_journal_id: journalId
@@ -134,6 +133,8 @@ export default function AdminJournals() {
       console.error(err)
       toast.error('Failed to unpublish paper')
     }
+    setActionLoading(false)
+    setConfirmState(null)
   }
 
 
@@ -242,7 +243,7 @@ export default function AdminJournals() {
                               className="btn btn-primary btn-sm"
                               title="Unpublish Paper"
                               style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
-                              onClick={() => handleUnpublish(j.id, j.title)}
+                              onClick={() => setConfirmState({ type: 'unpublish', id: j.id, title: j.title })}
                             >
                               Unpublish
                             </button>
@@ -250,7 +251,7 @@ export default function AdminJournals() {
                               className="btn btn-primary btn-sm"
                               title="Delete Published Paper"
                               style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
-                              onClick={() => handleDeletePublished(j.id, j.student_id, j.profiles?.name, j.title)}
+                              onClick={() => setConfirmState({ type: 'delete', id: j.id, title: j.title, studentId: j.student_id, studentName: j.profiles?.name })}
                             >
                               Delete
                             </button>
@@ -272,6 +273,24 @@ export default function AdminJournals() {
           Showing {filtered.length} of {journals.length} journals
         </div>
       </div>
+
+      <ConfirmModal
+        isOpen={!!confirmState}
+        onClose={() => !actionLoading && setConfirmState(null)}
+        onConfirm={() => {
+          if (confirmState.type === 'delete') handleDeletePublished(confirmState.id, confirmState.studentId, confirmState.studentName, confirmState.title)
+          if (confirmState.type === 'unpublish') handleUnpublish(confirmState.id)
+        }}
+        title={confirmState?.type === 'delete' ? 'Delete Published Paper' : 'Unpublish Paper'}
+        message={
+          confirmState?.type === 'delete'
+            ? `WARNING: Are you sure you want to PERMANENTLY delete "${confirmState.title}"? This cannot be undone.`
+            : `Are you sure you want to unpublish "${confirmState?.title}"? It will be moved back to the Accepted Papers list.`
+        }
+        confirmText={confirmState?.type === 'delete' ? 'Delete Permanently' : 'Unpublish'}
+        type={confirmState?.type === 'delete' ? 'danger' : 'warning'}
+        loading={actionLoading}
+      />
     </div>
   )
 }

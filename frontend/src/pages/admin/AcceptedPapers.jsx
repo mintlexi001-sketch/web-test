@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { X } from 'lucide-react'
 import { useToast } from '../../components/Toast'
+import ConfirmModal from '../../components/ConfirmModal'
 import { supabase } from '../../lib/supabase'
 import { sendNotification } from '../../lib/api'
 
@@ -10,6 +11,8 @@ export default function AcceptedPapers() {
   const [loading, setLoading] = useState(true)
   const [publishModal, setPublishModal] = useState(null) // journal object
   const [publishing, setPublishing] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(null)
+  const [deleteLoading, setDeleteLoading] = useState(false)
   const [form, setForm] = useState({ abstract: '', keywords: '', authors_text: '' })
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -95,9 +98,7 @@ export default function AcceptedPapers() {
   }
 
   async function handleDeletePaper(journalId, studentId, studentName, title) {
-    if (!window.confirm(`WARNING: Are you sure you want to PERMANENTLY delete the accepted paper "${title}"? This cannot be undone.`)) {
-      return
-    }
+    setDeleteLoading(true)
     try {
       // Use the secure admin delete route for complete removal
       const res = await sendNotification(`/api/admin/journals/${journalId}/delete`, {})
@@ -126,6 +127,8 @@ export default function AcceptedPapers() {
       console.error(err)
       toast.error('Failed to delete paper')
     }
+    setDeleteLoading(false)
+    setConfirmDelete(null)
   }
 
   return (
@@ -170,7 +173,7 @@ export default function AcceptedPapers() {
                   <button
                     className="btn btn-outline"
                     style={{ borderColor: 'var(--destructive)', color: 'var(--destructive)' }}
-                    onClick={() => handleDeletePaper(paper.id, paper.student_id, paper.profiles?.name, paper.title)}
+                    onClick={() => setConfirmDelete({ id: paper.id, studentId: paper.student_id, studentName: paper.profiles?.name, title: paper.title })}
                   >
                     Delete
                   </button>
@@ -229,6 +232,17 @@ export default function AcceptedPapers() {
           </div>
         </div>
       )}
+
+      <ConfirmModal
+        isOpen={!!confirmDelete}
+        onClose={() => !deleteLoading && setConfirmDelete(null)}
+        onConfirm={() => handleDeletePaper(confirmDelete.id, confirmDelete.studentId, confirmDelete.studentName, confirmDelete.title)}
+        title="Delete Accepted Paper"
+        message={`WARNING: Are you sure you want to PERMANENTLY delete "${confirmDelete?.title}"? This cannot be undone.`}
+        confirmText="Delete Permanently"
+        type="danger"
+        loading={deleteLoading}
+      />
     </div>
   )
 }

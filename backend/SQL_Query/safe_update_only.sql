@@ -849,41 +849,8 @@ END $$;
 --    -- Expected: f
 
 -- ============================================================
--- 13. ASSIGN REVIEWER RPC (B-4 Fix)
+-- 13. ASSIGN REVIEWER RPC (Moved to section 16a)
 -- ============================================================
-CREATE OR REPLACE FUNCTION public.assign_reviewer_to_journal(
-  p_journal_id uuid,
-  p_reviewer_id uuid
-) RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
-BEGIN
-  -- Check admin
-  IF NOT EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin') THEN
-    RAISE EXCEPTION 'Unauthorized';
-  END IF;
-
-  -- Issue 9 (audit_fixes.sql): Enforce reviewer active status server-side.
-  -- The client-side filter in AssignReviewers.jsx only shows active reviewers in the
-  -- dropdown, but this RPC check is the critical server-side enforcement that prevents
-  -- a banned/inactive reviewer from being assigned even via a direct API call.
-  IF (SELECT status FROM public.profiles WHERE id = p_reviewer_id) != 'active' THEN
-    RAISE EXCEPTION 'Cannot assign: Reviewer is not active';
-  END IF;
-
-  -- Atomic check-and-insert (single transaction, no TOCTOU)
-  IF EXISTS (SELECT 1 FROM public.assignments WHERE journal_id = p_journal_id FOR UPDATE) THEN
-    RAISE EXCEPTION 'Journal already has a reviewer assigned';
-  END IF;
-
-  INSERT INTO public.assignments (journal_id, reviewer_id)
-  VALUES (p_journal_id, p_reviewer_id);
-
-  UPDATE public.journals SET status = 'under_review'
-  WHERE id = p_journal_id;
-END;
-$$;
-
-REVOKE EXECUTE ON FUNCTION public.assign_reviewer_to_journal(uuid, uuid) FROM public;
-GRANT  EXECUTE ON FUNCTION public.assign_reviewer_to_journal(uuid, uuid) TO authenticated;
 
 -- ============================================================
 -- 14. ADMIN JOURNALS POLICY WITH CHECK (B-6 Fix)
@@ -976,6 +943,9 @@ BEGIN
   IF p_status NOT IN ('accepted', 'rejected', 'rework') THEN
     RAISE EXCEPTION 'Invalid decision status. Allowed: accepted, rejected, rework';
   END IF;
+  IF (SELECT status FROM public.journals WHERE id = p_journal_id) = 'published' THEN
+    RAISE EXCEPTION 'Cannot make decision: Journal is already published';
+  END IF;
   UPDATE public.journals SET
     status = p_status,
     admin_comments = p_admin_comments,
@@ -1014,6 +984,9 @@ CREATE OR REPLACE FUNCTION public.admin_compile_issue(
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin') THEN
     RAISE EXCEPTION 'Unauthorized';
+  END IF;
+  IF EXISTS (SELECT 1 FROM public.journals WHERE id = ANY(p_journal_ids) AND status != 'accepted') THEN
+    RAISE EXCEPTION 'Cannot compile issue: All selected journals must be in "accepted" status';
   END IF;
   UPDATE public.journals SET
     volume_number = p_volume,

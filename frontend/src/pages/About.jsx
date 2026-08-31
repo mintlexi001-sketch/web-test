@@ -23,7 +23,7 @@ const allCards = [
   },
   {
     title: 'Secure Submission',
-    description: 'End-to-end encrypted submissions ensuring your research remains confidential throughout the review process.',
+    description: 'Secure submissions ensuring your research remains confidential throughout the review process.',
     num: '04', strong: true,
   },
   {

@@ -102,7 +102,7 @@ export default function PaperRequests() {
 
       {/* Filter Tabs */}
       <div style={{ display: 'flex', gap: '0.5rem' }}>
-        {['pending', 'approved', 'rejected', 'responded', 'all'].map(f => (
+        {['pending', 'approved', 'rejected', 'all'].map(f => (
           <button key={f} onClick={() => setFilter(f)}
             className={`btn btn-sm ${filter === f ? 'btn-primary' : 'btn-outline'}`}>
             {f.charAt(0).toUpperCase() + f.slice(1)}
