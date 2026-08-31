@@ -192,7 +192,7 @@ export function Navbar() {
             </div>
 
             {/* Mobile Actions */}
-            <div className="navbar-menu-btn" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <div className="navbar-menu-btn" style={{ alignItems: 'center', gap: '0.5rem' }}>
               {!loading && !user && (
                 <Link to="/login" className="btn btn-sidebar-solid btn-sm" style={{ padding: '0.4rem 0.75rem' }}>
                   Sign In

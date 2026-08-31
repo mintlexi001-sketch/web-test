@@ -14,7 +14,6 @@ import { GoldUnderline } from '../components/ui/GoldUnderline';
 import { Scroll3DWrapper } from '../components/ui/Scroll3DWrapper';
 import { ScrollJourney } from '../components/ui/ScrollJourney';
 import { SpiralScrollPath } from '../components/ui/SpiralScrollPath';
-import { ElegantGridBackground } from '../components/ui/ElegantGridBackground';
 import { BackgroundElements } from '../components/ui/BackgroundElements';
 import { ParallaxFloatingElements } from '../components/ui/ParallaxFloatingElements';
 
@@ -692,7 +691,7 @@ function ContactSection() {
   const handleSubmit = async (e) => {
     e.preventDefault()
     setSubmitting(true)
-    
+
     const form = e.target;
     const name = form['c-name'].value;
     const email = form['c-email'].value;
@@ -709,9 +708,9 @@ function ContactSection() {
       const res = await sendNotification('/api/notify/contact', {
         name, email, subject, message, turnstileToken
       });
-      
+
       if (!res || !res.ok) throw new Error('Failed to send message');
-      
+
       toast.success("Message sent! We'll get back to you soon.")
       form.reset()
     } catch (error) {
@@ -777,7 +776,7 @@ function ContactSection() {
                 {[
                   { title: 'Email', lines: ['editorscisoc@nirmalacollege.ac.in'] },
                   { title: 'Phone', lines: ['+91 4852832361 ', 'Mon–Fri, 9:00 AM – 5:00 PM IST'] },
-                  { title: 'Address', lines: ['Nirmala College', 'Muvattupuzha(Autonomous), Kerala, India'] },
+                  { title: 'Address', lines: ['Nirmala College', 'Muvattupuzha (Autonomous), Kerala, India'] },
                 ].map(({ title, lines }) => (
                   <StaggerItem key={title} className="contact-info-card card" style={{ padding: '2rem' }}>
                     <div>
@@ -870,7 +869,6 @@ function GuidelinesSection() {
 export default function Home() {
   return (
     <>
-      <ElegantGridBackground />
       <BackgroundElements />
       <ParallaxFloatingElements />
       <SpiralScrollPath />

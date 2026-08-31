@@ -8,6 +8,7 @@ import { Footer } from './components/Footer'
 import { DashboardSidebar } from './components/Sidebar'
 import { ScrollProgress } from './components/ui/ScrollProgress'
 import { IntroAnimation } from './components/ui/IntroAnimation'
+import { ElegantGridBackground } from './components/ui/ElegantGridBackground'
 import { useState } from 'react'
 
 import Home from './pages/Home'
@@ -172,6 +173,7 @@ export default function App() {
   return (
     <>
       {showIntro && <IntroAnimation onComplete={handleIntroComplete} />}
+      <ElegantGridBackground />
       <ScrollProgress />
       <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <ThemeProvider>

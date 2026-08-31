@@ -169,7 +169,6 @@ html {
 
 body {
   font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
-  background-color: var(--background);
   color: var(--foreground);
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
@@ -720,6 +719,7 @@ label {
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  flex-shrink: 0;
 }
 
 .navbar-brand-text {
@@ -797,9 +797,10 @@ label {
   display: flex;
 }
 
-@media (min-width: 1350px) {
+@media (min-width: 1440px) {
   .navbar-links {
     display: flex;
+    gap: 0.85rem;
   }
 
   .navbar-actions {
@@ -1246,9 +1247,8 @@ label {
 /* ── About Section ────────────────────────────────────────────────── */
 .about-section {
   padding: 5rem 0;
-  background: var(--muted);
+  background: transparent;
   position: relative;
-  overflow: hidden;
 }
 
 .section-header {
@@ -1334,7 +1334,6 @@ label {
 .workflow-section {
   padding: 5rem 0;
   position: relative;
-  overflow: hidden;
 }
 
 .workflow-steps {
@@ -1472,9 +1471,8 @@ label {
 /* ── Contact Section ──────────────────────────────────────────────── */
 .contact-section {
   padding: 5rem 0;
-  background: var(--muted);
+  background: transparent;
   position: relative;
-  overflow: hidden;
 }
 
 .contact-grid {
