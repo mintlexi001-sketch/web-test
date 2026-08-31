@@ -67,7 +67,7 @@ export default function Register() {
 
     setLoading(true);
     try {
-      await requestRegisterOTP(form.email, form.role, undefined, turnstileToken);
+      await requestRegisterOTP(form.email, form.role, turnstileToken);
       toast.success('OTP sent to your email!');
       setOtpStep(true);
     } catch (err) {

@@ -77,11 +77,11 @@ export function AuthProvider({ children }) {
     return data
   }
 
-  async function requestRegisterOTP(email, role, adminCode, turnstileToken) {
+  async function requestRegisterOTP(email, role, turnstileToken) {
     const res = await fetch(`${API_BASE}/api/auth/register-otp`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, role, adminCode, turnstileToken })
+      body: JSON.stringify({ email, role, turnstileToken })
     })
     if (!res.ok) {
       const data = await res.json()
@@ -89,11 +89,11 @@ export function AuthProvider({ children }) {
     }
   }
 
-  async function verifyRegisterOTP(email, otp, password, name, role, adminCode) {
+  async function verifyRegisterOTP(email, otp, password, name, role) {
     const res = await fetch(`${API_BASE}/api/auth/verify-register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, otp, password, name, role, adminCode })
+      body: JSON.stringify({ email, otp, password, name, role })
     })
     if (!res.ok) {
       const data = await res.json()

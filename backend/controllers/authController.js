@@ -71,7 +71,7 @@ const verifyTurnstile = async (token) => {
 };
 
 exports.sendRegisterOTP = async (req, res) => {
-  const { email, role, adminCode, turnstileToken } = req.body;
+  const { email, role, turnstileToken } = req.body;
 
   // SEC-024: Require Turnstile CAPTCHA on OTP send — prevents email-flooding abuse
   const captchaOk = await verifyTurnstile(turnstileToken);
@@ -79,17 +79,8 @@ exports.sendRegisterOTP = async (req, res) => {
 
   if (!validateEmail(email)) return res.status(400).json({ error: 'Invalid email format' });
   if (!validateNotTempEmail(email)) return res.status(400).json({ error: 'Please use a standard email provider (Gmail, Outlook, etc.) or a college domain' });
-  if (!['student', 'reviewer', 'admin'].includes(role)) return res.status(400).json({ error: 'Invalid role' });
-
-  if (role === 'admin') {
-    if (!process.env.ADMIN_SECRET) {
-      console.error('CRITICAL: ADMIN_SECRET is not configured in the environment');
-      return res.status(500).json({ error: 'Server configuration error' });
-    }
-    if (!adminCode || adminCode !== process.env.ADMIN_SECRET) {
-      return res.status(401).json({ error: 'Invalid admin secret code' });
-    }
-  }
+  // Admin accounts are created exclusively via promotion in the Admin Panel — not via public registration
+  if (!['student', 'reviewer'].includes(role)) return res.status(400).json({ error: 'Invalid role' });
 
   // Check 60-second cooldown to prevent spamming OTP requests
   const { data: existingOtp } = await supabase
@@ -129,25 +120,16 @@ exports.sendRegisterOTP = async (req, res) => {
 };
 
 exports.verifyRegisterOTP = async (req, res) => {
-  let { email, otp, password, name, role, adminCode } = req.body;
+  let { email, otp, password, name, role } = req.body;
 
   if (!validateEmail(email)) return res.status(400).json({ error: 'Invalid email format' });
   if (!validateString(otp, 6) || otp.length !== 6) return res.status(400).json({ error: 'Invalid OTP' });
   if (!validatePassword(password)) return res.status(400).json({ error: 'Password must be at least 8 characters, with 1 uppercase letter and 1 number' });
   if (!validateString(name, 100)) return res.status(400).json({ error: 'Invalid name' });
-  if (!['student', 'reviewer', 'admin'].includes(role)) return res.status(400).json({ error: 'Invalid role' });
+  // Admin accounts are created exclusively via promotion — block any attempt to self-register as admin
+  if (!['student', 'reviewer'].includes(role)) return res.status(400).json({ error: 'Invalid role' });
   
   name = name.trim(); // Sanitize name
-
-  if (role === 'admin') {
-    if (!process.env.ADMIN_SECRET) {
-      console.error('CRITICAL: ADMIN_SECRET is not configured in the environment');
-      return res.status(500).json({ error: 'Server configuration error' });
-    }
-    if (!adminCode || adminCode !== process.env.ADMIN_SECRET) {
-      return res.status(401).json({ error: 'Invalid admin secret code' });
-    }
-  }
 
   const { data, error } = await supabase
     .from('custom_otps')

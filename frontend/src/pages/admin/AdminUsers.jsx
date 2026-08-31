@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Search, Trash2, RefreshCw, CheckCircle2, XCircle, Clock, ShieldCheck, ShieldOff, ShieldAlert } from 'lucide-react'
+import { Search, Trash2, RefreshCw, CheckCircle2, XCircle, Clock, ShieldCheck, ShieldOff, ShieldAlert, UserCog } from 'lucide-react'
 import { useToast } from '../../components/Toast'
 import { supabase } from '../../lib/supabase'
 import ConfirmModal from '../../components/ConfirmModal'
@@ -145,6 +145,32 @@ export default function AdminUsers() {
     setActionLoading(null)
   }
 
+  async function promoteUser(user) {
+    setActionLoading(user.id)
+    const { error } = await supabase.rpc('promote_to_admin', { p_user_id: user.id })
+    if (error) {
+      toast.error('Failed to promote user: ' + error.message)
+    } else {
+      toast.success(`${user.name} has been promoted to Admin.`)
+      setUsers(prev => prev.map(u => u.id === user.id ? { ...u, role: 'admin' } : u))
+      window.dispatchEvent(new Event('users-updated'))
+    }
+    setActionLoading(null)
+  }
+
+  async function demoteUser(user) {
+    setActionLoading(user.id)
+    const { error } = await supabase.rpc('demote_from_admin', { p_user_id: user.id })
+    if (error) {
+      toast.error('Failed to demote user: ' + error.message)
+    } else {
+      toast.success(`${user.name} has been demoted back to Author.`)
+      setUsers(prev => prev.map(u => u.id === user.id ? { ...u, role: 'student' } : u))
+      window.dispatchEvent(new Event('users-updated'))
+    }
+    setActionLoading(null)
+  }
+
   function triggerDelete(user) {
     setConfirmData({ type: 'delete', user })
     setConfirmOpen(true)
@@ -160,12 +186,24 @@ export default function AdminUsers() {
     setConfirmOpen(true)
   }
 
+  function triggerPromote(user) {
+    setConfirmData({ type: 'promote', user })
+    setConfirmOpen(true)
+  }
+
+  function triggerDemote(user) {
+    setConfirmData({ type: 'demote', user })
+    setConfirmOpen(true)
+  }
+
   async function handleConfirm() {
     if (!confirmData) return
     setConfirmLoading(true)
     if (confirmData.type === 'delete') await deleteUser(confirmData.user)
     else if (confirmData.type === 'ban') await banUser(confirmData.user)
     else if (confirmData.type === 'reject') await rejectUser(confirmData.user)
+    else if (confirmData.type === 'promote') await promoteUser(confirmData.user)
+    else if (confirmData.type === 'demote') await demoteUser(confirmData.user)
     setConfirmLoading(false)
     setConfirmOpen(false)
     setConfirmData(null)
@@ -202,6 +240,21 @@ export default function AdminUsers() {
       return <span style={{ color: 'var(--muted-foreground)', fontSize: '0.8rem' }}>—</span>
     }
 
+    // Permanent admin can demote non-permanent admins
+    if (u.role === 'admin' && isPermanentAdmin) {
+      return (
+        <button
+          className="btn btn-sm"
+          style={{ background: '#f59e0b', color: '#fff', display: 'inline-flex', alignItems: 'center', gap: '0.3rem', opacity: actionLoading === u.id ? 0.6 : 1 }}
+          disabled={actionLoading === u.id}
+          title="Revoke admin access"
+          onClick={() => triggerDemote(u)}
+        >
+          <UserCog size={14} /> Demote
+        </button>
+      )
+    }
+
     // The logged-in admin cannot delete themselves
     if (isMe) {
       return <span style={{ color: 'var(--muted-foreground)', fontSize: '0.8rem' }}>—</span>
@@ -231,9 +284,21 @@ export default function AdminUsers() {
       )
     }
 
-    // Active / Inactive → Ban / Unban + Delete
+    // Active / Inactive → Ban / Unban + Delete (+ Promote if permanent admin)
     return (
       <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+        {/* Promote to Admin — only permanent admin, only for active non-admin users */}
+        {isPermanentAdmin && u.status === 'active' && u.role !== 'admin' && (
+          <button
+            className="btn btn-sm"
+            style={{ background: 'var(--primary)', color: '#fff', display: 'inline-flex', alignItems: 'center', gap: '0.3rem', opacity: actionLoading === u.id ? 0.6 : 1 }}
+            disabled={actionLoading === u.id}
+            title="Promote to Admin"
+            onClick={() => triggerPromote(u)}
+          >
+            <UserCog size={14} /> Promote
+          </button>
+        )}
         {u.status === 'active' ? (
           <button
             className="btn btn-primary btn-sm"
@@ -268,12 +333,22 @@ export default function AdminUsers() {
     )
   }
 
-  const confirmTitle   = confirmData?.type === 'delete' ? 'Delete User?' : confirmData?.type === 'reject' ? 'Reject Application?' : 'Suspend User?'
+  // Also add Demote button for non-permanent admin rows (visible only to permanent admin)
+  // This is handled inside renderActions above. The confirm message/title logic:
+  const confirmTitle   = confirmData?.type === 'delete'  ? 'Delete User?'
+    : confirmData?.type === 'reject'  ? 'Reject Application?'
+    : confirmData?.type === 'promote' ? 'Promote to Admin?'
+    : confirmData?.type === 'demote'  ? 'Demote Admin?'
+    : 'Suspend User?'
   const confirmMessage = confirmData?.type === 'delete'
     ? `Are you sure you want to permanently delete ${confirmData?.user?.name}? They will receive an email notification. This cannot be undone.`
     : confirmData?.type === 'reject'
       ? `Are you sure you want to decline the reviewer application for ${confirmData?.user?.name}? This will delete their pending account and notify them via email.`
-      : `Suspend ${confirmData?.user?.name}? They will be locked out and notified by email. You can reinstate them later.`
+      : confirmData?.type === 'promote'
+        ? `Promote ${confirmData?.user?.name} to Admin? They will gain full administrative access to the system.`
+        : confirmData?.type === 'demote'
+          ? `Demote ${confirmData?.user?.name} back to Author? They will lose all admin access immediately.`
+          : `Suspend ${confirmData?.user?.name}? They will be locked out and notified by email. You can reinstate them later.`
 
   return (
     <div className="space-y-6">
@@ -394,9 +469,15 @@ export default function AdminUsers() {
         onConfirm={handleConfirm}
         title={confirmTitle}
         message={confirmMessage}
-        confirmText={confirmData?.type === 'delete' ? 'Delete' : confirmData?.type === 'reject' ? 'Reject' : 'Suspend'}
+        confirmText={
+          confirmData?.type === 'delete'  ? 'Delete'   :
+          confirmData?.type === 'reject'  ? 'Reject'   :
+          confirmData?.type === 'promote' ? 'Promote'  :
+          confirmData?.type === 'demote'  ? 'Demote'   :
+          'Suspend'
+        }
         loading={confirmLoading}
-        type="danger"
+        type={confirmData?.type === 'promote' ? 'warning' : 'danger'}
       />
     </div>
   )

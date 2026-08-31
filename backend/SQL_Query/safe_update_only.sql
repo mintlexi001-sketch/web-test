@@ -463,6 +463,55 @@ END;
 $$;
 REVOKE EXECUTE ON FUNCTION public.approve_reviewer(uuid) FROM public;
 
+-- promote_to_admin: Elevates an active user to the admin role.
+-- SECURITY: Callable only by the permanent admin (is_permanent = true).
+-- A regular sub-admin cannot promote others to admin.
+-- The target user must be active (not pending/suspended) and not already an admin.
+DROP FUNCTION IF EXISTS public.promote_to_admin(uuid);
+CREATE OR REPLACE FUNCTION public.promote_to_admin(p_user_id uuid)
+RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+BEGIN
+  -- Only the permanent admin can call this function
+  IF NOT EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND is_permanent = true) THEN
+    RAISE EXCEPTION 'Unauthorized: only the permanent admin can promote users to admin';
+  END IF;
+  -- The target must exist, be active, and not already be an admin
+  IF NOT EXISTS (SELECT 1 FROM public.profiles WHERE id = p_user_id AND status = 'active' AND role != 'admin') THEN
+    RAISE EXCEPTION 'Target user is not eligible for promotion (must be active and not already an admin)';
+  END IF;
+  UPDATE public.profiles SET role = 'admin' WHERE id = p_user_id;
+END;
+$$;
+REVOKE EXECUTE ON FUNCTION public.promote_to_admin(uuid) FROM public;
+GRANT  EXECUTE ON FUNCTION public.promote_to_admin(uuid) TO authenticated;
+
+
+-- demote_from_admin: Reverts an admin back to the 'student' role.
+-- SECURITY: Callable only by the permanent admin (is_permanent = true).
+-- A regular sub-admin cannot demote others, and the permanent admin cannot demote themselves.
+DROP FUNCTION IF EXISTS public.demote_from_admin(uuid);
+CREATE OR REPLACE FUNCTION public.demote_from_admin(p_user_id uuid)
+RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+BEGIN
+  -- Only the permanent admin can call this function
+  IF NOT EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND is_permanent = true) THEN
+    RAISE EXCEPTION 'Unauthorized: only the permanent admin can demote admins';
+  END IF;
+  -- Cannot demote yourself (the permanent admin)
+  IF p_user_id = auth.uid() THEN
+    RAISE EXCEPTION 'Cannot demote yourself';
+  END IF;
+  -- Target must be a non-permanent admin
+  IF NOT EXISTS (SELECT 1 FROM public.profiles WHERE id = p_user_id AND role = 'admin' AND is_permanent = false) THEN
+    RAISE EXCEPTION 'Target user is not a demotable admin';
+  END IF;
+  UPDATE public.profiles SET role = 'student' WHERE id = p_user_id;
+END;
+$$;
+REVOKE EXECUTE ON FUNCTION public.demote_from_admin(uuid) FROM public;
+GRANT  EXECUTE ON FUNCTION public.demote_from_admin(uuid) TO authenticated;
+
+
 -- Revoke public execute from schema.sql functions that lacked it
 REVOKE EXECUTE ON FUNCTION public.ban_user(uuid)   FROM public;
 REVOKE EXECUTE ON FUNCTION public.unban_user(uuid) FROM public;
@@ -1014,4 +1063,29 @@ REVOKE EXECUTE ON FUNCTION public.admin_compile_issue(text, text, uuid[]) FROM p
 GRANT  EXECUTE ON FUNCTION public.admin_compile_issue(text, text, uuid[]) TO authenticated;
 
 COMMIT;
+
+
+-- ============================================================
+-- ADMIN PROMOTION RPC
+-- ============================================================
+-- Allows an existing active admin to promote a student or reviewer to admin.
+CREATE OR REPLACE FUNCTION public.promote_to_admin(p_user_id uuid)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS 
+BEGIN
+  -- Security check: ensure the caller is an active admin
+  IF NOT EXISTS (
+    SELECT 1 FROM public.profiles 
+    WHERE id = auth.uid() AND role = 'admin' AND status = 'active'
+  ) THEN
+    RAISE EXCEPTION 'Access denied: Only active admins can promote users';
+  END IF;
+
+  UPDATE public.profiles
+  SET role = 'admin', status = 'active'
+  WHERE id = p_user_id;
+END;
+$$;
 
