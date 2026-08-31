@@ -293,11 +293,14 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: 'Internal Server Error' });
 });
 
-// Note: /health is already registered above. This duplicate comment is intentionally removed.
+// Export app so Supertest (vitest) can import it without starting a server
+module.exports = app;
 
-// Start Express server (Render/Railway persistent host — always listen on 0.0.0.0)
-const PORT = process.env.PORT || 3001;
-
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`Email & Auth Server running on port ${PORT}`);
-});
+// Start Express server on Render (persistent host — bind 0.0.0.0 for external traffic).
+// Skip listen() during test runs so the test suite doesn't occupy a port.
+if (process.env.NODE_ENV !== 'test') {
+  const PORT = process.env.PORT || 3001;
+  app.listen(PORT, '0.0.0.0', () => {
+    console.log(`Email & Auth Server running on port ${PORT}`);
+  });
+}
