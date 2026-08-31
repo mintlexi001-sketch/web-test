@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import { sendNotification } from '../lib/api'
 import { useToast } from '../components/Toast'
+import ConfirmModal from '../components/ConfirmModal'
 
 export default function NotificationsPage() {
   const { user, profile } = useAuth()
@@ -17,6 +18,8 @@ export default function NotificationsPage() {
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
   const [activeTab, setActiveTab] = useState('all')
+  const [clearConfirmOpen, setClearConfirmOpen] = useState(false)
+  const [clearLoading, setClearLoading] = useState(false)
 
   const filteredNotifications = notifications.filter(notification => {
     const isContact = notification.metadata?.type === 'contact';
@@ -92,26 +95,24 @@ export default function NotificationsPage() {
   }
 
   const clearAll = async () => {
-    const tabLabels = { all: 'all notifications', system: 'System notifications', messages: 'Contact Messages', paper_requests: 'Paper Requests' }
-    const label = tabLabels[activeTab] || 'these notifications'
-    if (!window.confirm(`Are you sure you want to delete ${label}? This cannot be undone.`)) return
-    
+    setClearLoading(true)
     if (activeTab === 'all') {
-      // Delete everything for this user
       await supabase.from('notifications').delete().eq('user_id', user.id)
       setNotifications([])
       setUnreadCount(0)
     } else {
-      // Only delete the IDs currently visible in this tab
       const idsToDelete = filteredNotifications.map(n => n.id)
-      if (idsToDelete.length === 0) return
-      await supabase.from('notifications').delete().in('id', idsToDelete)
-      setNotifications(prev => prev.filter(n => !idsToDelete.includes(n.id)))
-      setUnreadCount(prev => {
-        const deletedUnread = filteredNotifications.filter(n => !n.is_read).length
-        return Math.max(0, prev - deletedUnread)
-      })
+      if (idsToDelete.length > 0) {
+        await supabase.from('notifications').delete().in('id', idsToDelete)
+        setNotifications(prev => prev.filter(n => !idsToDelete.includes(n.id)))
+        setUnreadCount(prev => {
+          const deletedUnread = filteredNotifications.filter(n => !n.is_read).length
+          return Math.max(0, prev - deletedUnread)
+        })
+      }
     }
+    setClearLoading(false)
+    setClearConfirmOpen(false)
   }
 
   const handleReplySubmit = async (e) => {
@@ -168,7 +169,7 @@ export default function NotificationsPage() {
           )}
           {filteredNotifications.length > 0 && (
             <button 
-              onClick={clearAll} 
+              onClick={() => setClearConfirmOpen(true)} 
               className="btn btn-outline btn-sm" 
               style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', color: 'var(--destructive)', borderColor: 'var(--destructive)' }}
             >
@@ -416,6 +417,17 @@ export default function NotificationsPage() {
           </div>
         </div>
       )}
+
+      <ConfirmModal
+        isOpen={clearConfirmOpen}
+        onClose={() => setClearConfirmOpen(false)}
+        onConfirm={clearAll}
+        title="Clear Notifications?"
+        message={`Are you sure you want to delete ${{ all: 'all notifications', system: 'System notifications', messages: 'Contact Messages', paper_requests: 'Paper Requests' }[activeTab] || 'these notifications'}? This cannot be undone.`}
+        confirmText="Clear"
+        loading={clearLoading}
+        type="danger"
+      />
     </div>
   )
 }

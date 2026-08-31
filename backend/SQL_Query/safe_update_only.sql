@@ -544,12 +544,17 @@ CREATE TRIGGER trg_set_journal_author_name
 -- TRIGGER 2: Protect root admin in auth.users (DELETE and email change)
 CREATE OR REPLACE FUNCTION public.protect_permanent_admin()
 RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE
+  v_is_permanent boolean;
 BEGIN
-  IF TG_OP = 'DELETE' AND OLD.email = 'nirmala.scienceandsociety@gmail.com' THEN
+  SELECT is_permanent INTO v_is_permanent FROM public.profiles WHERE id = OLD.id;
+
+  IF TG_OP = 'DELETE' AND v_is_permanent = true THEN
     RAISE EXCEPTION 'SECURITY: The permanent admin account cannot be deleted.';
   END IF;
+  
   IF TG_OP = 'UPDATE'
-     AND OLD.email = 'nirmala.scienceandsociety@gmail.com'
+     AND v_is_permanent = true
      AND NEW.email != OLD.email
   THEN
     RAISE EXCEPTION 'SECURITY: The permanent admin account email cannot be changed.';
@@ -1073,7 +1078,7 @@ CREATE OR REPLACE FUNCTION public.promote_to_admin(p_user_id uuid)
 RETURNS void
 LANGUAGE plpgsql
 SECURITY DEFINER
-AS 
+AS $$
 BEGIN
   -- Security check: ensure the caller is an active admin
   IF NOT EXISTS (
@@ -1088,4 +1093,110 @@ BEGIN
   WHERE id = p_user_id;
 END;
 $$;
+
+-- ============================================================
+-- MISSING ADMIN RPCs (from schema.sql)
+-- ============================================================
+create or replace function public.ban_user(p_user_id uuid)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if not exists (select 1 from public.profiles where id = auth.uid() and role = 'admin') then
+    raise exception 'Unauthorized';
+  end if;
+
+  if exists (select 1 from public.profiles where id = p_user_id and is_permanent = true) then
+    raise exception 'Cannot ban the permanent admin account';
+  end if;
+
+  update public.profiles set status = 'inactive' where id = p_user_id;
+end;
+$$;
+REVOKE EXECUTE ON FUNCTION public.ban_user(uuid) FROM public;
+GRANT EXECUTE ON FUNCTION public.ban_user(uuid) TO authenticated;
+
+create or replace function public.unban_user(p_user_id uuid)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if not exists (select 1 from public.profiles where id = auth.uid() and role = 'admin') then
+    raise exception 'Unauthorized';
+  end if;
+
+  update public.profiles set status = 'active' where id = p_user_id;
+end;
+$$;
+REVOKE EXECUTE ON FUNCTION public.unban_user(uuid) FROM public;
+GRANT EXECUTE ON FUNCTION public.unban_user(uuid) TO authenticated;
+
+create or replace function public.delete_user(target_user_id uuid)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if not exists (select 1 from public.profiles where id = auth.uid() and role = 'admin') then
+    raise exception 'Unauthorized';
+  end if;
+
+  -- Guard: never allow deletion of the permanent main admin account
+  if exists (select 1 from public.profiles where id = target_user_id and is_permanent = true) then
+    raise exception 'SECURITY EXCEPTION: The permanent main admin account cannot be deleted.';
+  end if;
+
+  -- Safe to delete — cascades to public.profiles
+  delete from auth.users where id = target_user_id;
+end;
+$$;
+REVOKE EXECUTE ON FUNCTION public.delete_user(uuid) FROM public;
+GRANT EXECUTE ON FUNCTION public.delete_user(uuid) TO authenticated;
+
+-- ============================================================
+-- PRE-COMPILE PUBLISH RPC (L-4)
+-- ============================================================
+-- Atomically transitions a journal from 'approved' to 'published' (Articles in Press)
+-- with status-machine guard. Accepts full metadata so the update is atomic.
+CREATE OR REPLACE FUNCTION public.publish_pre_compile(
+  p_journal_id  uuid,
+  p_abstract    text    DEFAULT NULL,
+  p_keywords    text    DEFAULT NULL,
+  p_authors     jsonb   DEFAULT NULL,
+  p_author_name text    DEFAULT NULL
+)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin' AND status = 'active') THEN
+    RAISE EXCEPTION 'Unauthorized';
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM public.journals WHERE id = p_journal_id AND status IN ('approved', 'accepted')) THEN
+    RAISE EXCEPTION 'Journal must be in approved/accepted state before it can be published';
+  END IF;
+
+  UPDATE public.journals
+  SET
+    status        = 'published',
+    published_at  = now(),
+    volume_number = NULL,
+    issue_number  = NULL,
+    abstract      = COALESCE(p_abstract, abstract),
+    keywords      = COALESCE(p_keywords, keywords),
+    authors       = COALESCE(p_authors, authors),
+    author_name   = COALESCE(p_author_name, author_name)
+  WHERE id = p_journal_id;
+END;
+$$;
+REVOKE EXECUTE ON FUNCTION public.publish_pre_compile(uuid, text, text, jsonb, text) FROM public;
+GRANT EXECUTE ON FUNCTION public.publish_pre_compile(uuid, text, text, jsonb, text) TO authenticated;
 

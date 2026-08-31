@@ -11,41 +11,52 @@ export default function AdminDashboard() {
   const [recentUsers,    setUsers]    = useState([])
   const [requests,       setRequests] = useState([])
   const [loading, setLoading]         = useState(true)
+  const [fetchError, setFetchError]   = useState(false)
 
   useEffect(() => { fetchAll() }, [])
 
 
   async function fetchAll() {
     setLoading(true)
+    setFetchError(false)
 
-    const [journalsRes, profilesRes, pendingRes, approvedRes, recentJRes, recentURes, reqRes] = await Promise.all([
-      supabase.from('journals').select('id', { count: 'exact', head: true }),
-      supabase.from('profiles').select('id', { count: 'exact', head: true }),
-      supabase.from('journals').select('id', { count: 'exact', head: true }).eq('status', 'under_review'),
-      supabase.from('journals').select('id', { count: 'exact', head: true }).in('status', ['approved', 'published']),
-      supabase.from('journals')
-        .select('id, title, status, profiles(name)')
-        .order('created_at', { ascending: false })
-        .limit(4),
-      supabase.from('profiles')
-        .select('id, name, email, role')
-        .order('created_at', { ascending: false })
-        .limit(3),
-      supabase.from('paper_requests')
-        .select('*')
-        .eq('status', 'pending')
-        .order('created_at', { ascending: true })
-    ])
+    try {
+      const [journalsRes, profilesRes, pendingRes, approvedRes, recentJRes, recentURes, reqRes] = await Promise.all([
+        supabase.from('journals').select('id', { count: 'exact', head: true }),
+        supabase.from('profiles').select('id', { count: 'exact', head: true }),
+        supabase.from('journals').select('id', { count: 'exact', head: true }).eq('status', 'under_review'),
+        supabase.from('journals').select('id', { count: 'exact', head: true }).in('status', ['approved', 'published']),
+        supabase.from('journals')
+          .select('id, title, status, profiles(name)')
+          .order('created_at', { ascending: false })
+          .limit(4),
+        supabase.from('profiles')
+          .select('id, name, email, role')
+          .order('created_at', { ascending: false })
+          .limit(3),
+        supabase.from('paper_requests')
+          .select('*')
+          .eq('status', 'pending')
+          .order('created_at', { ascending: true })
+      ])
 
-    setStats({
-      total:    journalsRes.count ?? 0,
-      users:    profilesRes.count ?? 0,
-      pending:  pendingRes.count  ?? 0,
-      approved: approvedRes.count ?? 0,
-    })
-    setJournals(recentJRes.data ?? [])
-    setUsers(recentURes.data ?? [])
-    setRequests(reqRes.data ?? [])
+      if ([journalsRes, profilesRes, pendingRes, approvedRes, recentJRes, recentURes, reqRes].some(r => r.error)) {
+        throw new Error('One or more dashboard queries failed')
+      }
+
+      setStats({
+        total:    journalsRes.count ?? 0,
+        users:    profilesRes.count ?? 0,
+        pending:  pendingRes.count  ?? 0,
+        approved: approvedRes.count ?? 0,
+      })
+      setJournals(recentJRes.data ?? [])
+      setUsers(recentURes.data ?? [])
+      setRequests(reqRes.data ?? [])
+    } catch (err) {
+      console.error('AdminDashboard fetchAll error:', err)
+      setFetchError(true)
+    }
     setLoading(false)
   }
 
@@ -62,6 +73,13 @@ export default function AdminDashboard() {
         <h1 className="page-title">Admin Dashboard</h1>
         <p className="page-subtitle">Overview of the journal submission system</p>
       </div>
+
+      {fetchError && (
+        <div className="card" style={{ padding: '1.5rem', textAlign: 'center', color: 'var(--destructive)' }}>
+          <p style={{ marginBottom: '0.75rem', fontSize: '0.95rem' }}>Failed to load dashboard data. Please check your connection.</p>
+          <button className="btn btn-outline btn-sm" onClick={fetchAll}>Retry</button>
+        </div>
+      )}
 
       <div className="stats-grid">
         {statCards.map(({ label, value, icon: Icon, color, change }) => (

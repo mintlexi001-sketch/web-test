@@ -9,12 +9,18 @@ let toastId = 0
 export function ToastProvider({ children }) {
   const [toasts, setToasts] = useState([])
 
+  const timerIds = useCallback(() => {}, [])
+  const activeTimers = new Set()
+
   const toast = useCallback(({ message, type = 'default', duration = 3500 }) => {
     const id = ++toastId
     setToasts(prev => [...prev, { id, message, type }])
-    setTimeout(() => {
+    const timerId = setTimeout(() => {
       setToasts(prev => prev.filter(t => t.id !== id))
+      activeTimers.delete(timerId)
     }, duration)
+    activeTimers.add(timerId)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   toast.success = (msg, opts = {}) => toast({ message: msg, type: 'success', duration: opts.duration })

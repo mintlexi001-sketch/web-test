@@ -5,8 +5,23 @@ import { useToast } from '../../components/Toast'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../context/AuthContext'
 import { sendNotification } from '../../lib/api'
+import ConfirmModal from '../../components/ConfirmModal'
 
 const statusLabels = { pending: 'Pending', submitted: 'Submitted', under_review: 'Under Review', approved: 'Accepted', rejected: 'Rejected', revision_required: 'Revision Required', rework: 'Revision Required', published: 'Published' }
+
+const isPdfMagicBytes = (file) =>
+  new Promise((resolve) => {
+    const reader = new FileReader()
+    reader.onloadend = (e) => {
+      const bytes = new Uint8Array(e.target.result)
+      // %PDF- = 0x25 0x50 0x44 0x46 0x2D
+      resolve(
+        bytes[0] === 0x25 && bytes[1] === 0x50 &&
+        bytes[2] === 0x44 && bytes[3] === 0x46 && bytes[4] === 0x2D
+      )
+    }
+    reader.readAsArrayBuffer(file.slice(0, 5))
+  })
 
 /* ── Journal List ─────────────────────────────────────────────────── */
 export function StudentJournals() {
@@ -16,6 +31,11 @@ export function StudentJournals() {
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState('all')
   const [fetchError, setFetchError] = useState(false)
+  
+  // ConfirmModal state
+  const [confirmOpen, setConfirmOpen] = useState(false)
+  const [confirmId, setConfirmId] = useState(null)
+  const [deleting, setDeleting] = useState(false)
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { if (user) fetchJournals() }, [user])
@@ -42,20 +62,29 @@ export function StudentJournals() {
 
   const filtered = filter === 'all' ? journals : journals.filter(j => j.status === filter)
 
-  async function handleDelete(id) {
-    if (!window.confirm('Are you sure you want to delete this paper? This action cannot be undone.')) return
+  function triggerDelete(id) {
+    setConfirmId(id)
+    setConfirmOpen(true)
+  }
+
+  async function handleDeleteConfirm() {
+    if (!confirmId) return
+    setDeleting(true)
     try {
-      const res = await sendNotification(`/api/student/journals/${id}/delete`, {})
+      const res = await sendNotification(`/api/student/journals/${confirmId}/delete`, {})
       if (!res || !res.ok) {
         const errBody = res ? await res.json().catch(() => ({})) : {}
         throw new Error(errBody.error || 'Failed to delete paper on the server')
       }
       toast.success('Paper deleted successfully')
-      setJournals(prev => prev.filter(j => j.id !== id))
+      setJournals(prev => prev.filter(j => j.id !== confirmId))
     } catch (err) {
       console.error('Delete error:', err)
       toast.error(err.message || 'Failed to delete paper')
     }
+    setDeleting(false)
+    setConfirmOpen(false)
+    setConfirmId(null)
   }
 
   return (
@@ -112,7 +141,8 @@ export function StudentJournals() {
                       <button 
                         className="btn btn-outline btn-sm" 
                         style={{ color: '#ef4444', borderColor: '#ef4444' }}
-                        onClick={() => handleDelete(j.id)}
+                        onClick={() => triggerDelete(j.id)}
+                        disabled={deleting}
                         title="Delete Paper"
                       >
                         Delete
@@ -129,6 +159,17 @@ export function StudentJournals() {
           )}
         </div>
       </div>
+
+      <ConfirmModal
+        isOpen={confirmOpen}
+        onClose={() => setConfirmOpen(false)}
+        onConfirm={handleDeleteConfirm}
+        title="Delete Paper?"
+        message="Are you sure you want to delete this paper? This action cannot be undone."
+        confirmText="Delete"
+        loading={deleting}
+        type="danger"
+      />
     </div>
   )
 }
@@ -184,6 +225,19 @@ export function StudentJournalDetail() {
     let newFileUrl = null;
 
     try {
+      if (editFile.size > 10 * 1024 * 1024) {
+        toast.error('File size must be under 10MB')
+        setResubmitting(false)
+        return
+      }
+
+      const validPdf = await isPdfMagicBytes(editFile)
+      if (!validPdf) {
+        toast.error('Invalid file format. Please upload a valid PDF document.')
+        setResubmitting(false)
+        return
+      }
+
       // The backend securely fetches the previous reviewer name from the DB.
       // We don't need to fetch it from assignments here (students also lack RLS access to assignments).
       const prevReviewerName = reviews.length > 0 ? reviews[reviews.length - 1]?.profiles?.name : null
@@ -199,19 +253,7 @@ export function StudentJournalDetail() {
       newFileUrl = newFileName
 
 
-      // ── 2. Delete the OLD manuscript file from storage ─────────────────
-      if (journal.file_url) {
-        try {
-          const { extractStoragePath } = await import('../../lib/storage')
-          const oldPath = extractStoragePath(journal.file_url)
-          if (oldPath) await supabase.storage.from('journals').remove([oldPath])
-        } catch (delErr) {
-          console.warn('Could not delete old file from storage:', delErr)
-        }
-      }
-
-
-      // ── 3. Capture reviewer comments for history ────────────────────────
+      // ── 2. Capture reviewer comments for history ────────────────────────
       const latestReview = reviews.length > 0 ? reviews[reviews.length - 1] : null
 
       // ── 4. Call secure backend API — handles DB update, review/assignment
@@ -233,6 +275,17 @@ export function StudentJournalDetail() {
       if (!res || !res.ok) {
         const errBody = res ? await res.json().catch(() => ({})) : {}
         throw new Error(errBody.error || 'Resubmission failed on the server')
+      }
+
+      // ── 4. Delete the OLD manuscript file from storage ONLY IF SUCCESS ─
+      if (journal.file_url) {
+        try {
+          const { extractStoragePath } = await import('../../lib/storage')
+          const oldPath = extractStoragePath(journal.file_url)
+          if (oldPath) await supabase.storage.from('journals').remove([oldPath])
+        } catch (delErr) {
+          console.warn('Could not delete old file from storage:', delErr)
+        }
       }
 
       toast.success('Manuscript resubmitted! The admin will assign it for the next review round.')

@@ -6,6 +6,19 @@ import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../context/AuthContext'
 import { sendNotification } from '../../lib/api'
 
+const isPdfMagicBytes = (file) =>
+  new Promise((resolve) => {
+    const reader = new FileReader()
+    reader.onloadend = (e) => {
+      const bytes = new Uint8Array(e.target.result)
+      resolve(
+        bytes[0] === 0x25 && bytes[1] === 0x50 &&
+        bytes[2] === 0x44 && bytes[3] === 0x46 && bytes[4] === 0x2D
+      )
+    }
+    reader.readAsArrayBuffer(file.slice(0, 5))
+  })
+
 // Only reviewer-safe statuses — admin decisions are protected/private
 const statusLabels = {
   submitted: 'Submitted',
@@ -191,6 +204,17 @@ export function ReviewJournal() {
       // Upload revision report PDF to storage if a new file was selected
       let revisionUrl = existingReportUrl
       if (revisionFile) {
+        if (revisionFile.size > 10 * 1024 * 1024) {
+          toast.error('File size must be under 10MB')
+          setSubmitting(false)
+          return
+        }
+        const validPdf = await isPdfMagicBytes(revisionFile)
+        if (!validPdf) {
+          toast.error('Invalid file format. Please upload a valid PDF document.')
+          setSubmitting(false)
+          return
+        }
         // RLS Policy requires reviewers to upload strictly to their own UID folder
         const fileName = `reviewer/${user.id}/revision_${Date.now()}.pdf`
         const { error: upErr } = await supabase.storage

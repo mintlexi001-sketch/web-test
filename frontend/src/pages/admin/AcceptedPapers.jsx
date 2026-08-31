@@ -56,19 +56,13 @@ export default function AcceptedPapers() {
         is_corresponding: i === 0,
       })).filter(a => a.name)
 
-      const { error } = await supabase
-        .from('journals')
-        .update({
-          status: 'published',
-          volume_number: null,
-          issue_number: null,
-          abstract: form.abstract.trim(),
-          keywords: form.keywords.trim(),
-          authors: authorsArray,
-          author_name: authorsArray[0]?.name || publishModal.author_name,
-          published_at: new Date().toISOString()
-        })
-        .eq('id', publishModal.id)
+      const { error } = await supabase.rpc('publish_pre_compile', {
+        p_journal_id:  publishModal.id,
+        p_abstract:    form.abstract.trim(),
+        p_keywords:    form.keywords.trim(),
+        p_authors:     authorsArray,
+        p_author_name: authorsArray[0]?.name || publishModal.author_name,
+      })
 
       if (error) throw error
 
