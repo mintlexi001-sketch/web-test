@@ -10,6 +10,12 @@ const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SER
 const generateOTP = () => crypto.randomInt(100000, 1000000).toString();
 const hashOTP = (otp) => crypto.createHash('sha256').update(otp).digest('hex');
 
+const timingSafeCompare = (a, b) => {
+  if (typeof a !== 'string' || typeof b !== 'string') return false;
+  if (a.length !== b.length) return false;
+  return crypto.timingSafeEqual(Buffer.from(a), Buffer.from(b));
+};
+
 const validateEmail = (email) => typeof email === 'string' && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 const validateString = (str, maxLen = 100) => typeof str === 'string' && str.trim().length > 0 && str.trim().length <= maxLen;
 
@@ -153,7 +159,7 @@ exports.verifyRegisterOTP = async (req, res) => {
     return res.status(400).json({ error: 'Invalid or expired OTP' });
   }
 
-  if (data.otp !== hashOTP(otp)) {
+  if (!timingSafeCompare(data.otp, hashOTP(otp))) {
     // Wrong OTP: delete to prevent brute-force iteration
     await supabase.from('custom_otps').delete().eq('email', email);
     // Return same message as expired OTP to avoid distinguishing between the two (timing attack prevention)
@@ -260,7 +266,7 @@ exports.verifyResetOTP = async (req, res) => {
 
   // Check OTP validity — unified error to prevent distinguishing expired vs. wrong guess
   const isExpired = new Date() > new Date(data.expires_at);
-  const isWrongOtp = data.otp !== hashOTP(otp);
+  const isWrongOtp = !timingSafeCompare(data.otp, hashOTP(otp));
   
   if (isExpired || isWrongOtp) {
     // Delete OTP on any failure (matches register flow — prevents brute-force)
@@ -330,7 +336,7 @@ exports.verifyEmailChangeOTP = async (req, res) => {
 
   // Check OTP validity — unified error to prevent distinguishing expired vs. wrong guess
   const isExpired = new Date() > new Date(data.expires_at);
-  const isWrongOtp = data.otp !== hashOTP(otp);
+  const isWrongOtp = !timingSafeCompare(data.otp, hashOTP(otp));
 
   if (isExpired || isWrongOtp) {
     // Delete OTP on any failure (prevents brute-force)

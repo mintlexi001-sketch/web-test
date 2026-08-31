@@ -63,7 +63,7 @@ export default function Login() {
           <div className="form-group">
             <label htmlFor="login-email" style={{ fontWeight: 600, fontSize: '0.9rem' }}>Email address</label>
             <input 
-              id="login-email" type="email" autoComplete="off" className="input" 
+              id="login-email" type="email" autoComplete="email" className="input" 
               placeholder="name@example.com" 
               value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} 
               style={{ padding: '0.875rem 1rem', fontSize: '1rem', borderRadius: 'calc(var(--radius) * 0.75)' }}

@@ -202,6 +202,16 @@ CREATE POLICY "Restricted read reviews" ON public.reviews FOR SELECT
     )
   );
 
+-- Journal visibility: Students see own, Admins see all, Reviewers see assigned
+DROP POLICY IF EXISTS "Students see own journals" ON public.journals;
+DROP POLICY IF EXISTS "Read access for journals" ON public.journals;
+CREATE POLICY "Read access for journals" ON public.journals FOR SELECT
+  USING (
+    (select auth.uid()) = student_id or
+    exists (select 1 from public.profiles where id = (select auth.uid()) and role = 'admin') or
+    exists (select 1 from public.assignments where journal_id = journals.id and reviewer_id = (select auth.uid()))
+  );
+
 -- Journal insert: students must be active; submissions must be open
 DROP POLICY IF EXISTS "Students can insert journals when open" ON public.journals;
 CREATE POLICY "Students can insert journals when open" ON public.journals FOR INSERT

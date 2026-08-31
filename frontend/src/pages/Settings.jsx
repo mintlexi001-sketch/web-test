@@ -4,6 +4,7 @@ import { useToast } from '../components/Toast'
 import { useAuth } from '../context/AuthContext'
 import { sendNotification } from '../lib/api'
 import { supabase } from '../lib/supabase'
+import ConfirmModal from '../components/ConfirmModal'
 
 export default function Settings() {
   const { user, profile } = useAuth()
@@ -25,6 +26,9 @@ export default function Settings() {
   const [showCurrent, setShowCurrent] = useState(false)
   const [showNew, setShowNew] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
+
+  // ── Account Deletion State
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
 
   const [loading, setLoading] = useState(false)
 
@@ -125,10 +129,6 @@ export default function Settings() {
 
   // ── Handlers: Account Deletion ────────────────────────────────────
   const handleScheduleDeletion = async () => {
-    const confirmed = window.confirm(
-      'Request account deletion?\n\nYou will be signed out immediately. You have 15 days to cancel by simply signing back in. After 15 days, your account is permanently removed. Published journals are preserved.'
-    )
-    if (!confirmed) return
     setLoading(true)
     try {
       const { error } = await supabase.rpc('schedule_account_deletion')
@@ -217,7 +217,7 @@ export default function Settings() {
             </div>
             <button 
               type="button" 
-              onClick={handleScheduleDeletion} 
+              onClick={() => setDeleteConfirmOpen(true)} 
               disabled={loading}
               style={{ ...actionBtnStyle, color: 'var(--foreground)', borderColor: 'var(--border)' }}
               onMouseEnter={e => { e.currentTarget.style.backgroundColor = 'var(--surface)' }}
@@ -339,6 +339,20 @@ export default function Settings() {
           </div>
         </div>
       )}
+
+      {/* Delete Account Confirmation Modal */}
+      <ConfirmModal
+        isOpen={deleteConfirmOpen}
+        title="Request account deletion?"
+        message="You will be signed out immediately. You have 15 days to cancel by simply signing back in. After 15 days, your account is permanently removed. Published journals are preserved."
+        confirmText="Yes, deactivate account"
+        cancelText="Cancel"
+        onConfirm={() => {
+          setDeleteConfirmOpen(false)
+          handleScheduleDeletion()
+        }}
+        onCancel={() => setDeleteConfirmOpen(false)}
+      />
     </div>
   )
 }

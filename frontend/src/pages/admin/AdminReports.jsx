@@ -6,6 +6,20 @@ import { useAuth } from '../../context/AuthContext'
 import { supabase } from '../../lib/supabase'
 import { sendNotification } from '../../lib/api'
 
+/** Reads the first 5 bytes of a File and checks for the %PDF- magic number. */
+const isPdfMagicBytes = (file) =>
+  new Promise((resolve) => {
+    const reader = new FileReader()
+    reader.onloadend = (e) => {
+      const bytes = new Uint8Array(e.target.result)
+      resolve(
+        bytes[0] === 0x25 && bytes[1] === 0x50 &&
+        bytes[2] === 0x44 && bytes[3] === 0x46 && bytes[4] === 0x2D
+      )
+    }
+    reader.readAsArrayBuffer(file.slice(0, 5))
+  })
+
 /* ── Review Reports List (List View) ──────────────────────────────── */
 export default function AdminReports() {
   const [journals, setJournals] = useState([])
@@ -607,8 +621,23 @@ export function ReviewReportDetail() {
                               }}>Remove</button>
                             </div>
                           ) : (
-                            <input type="file" accept=".pdf" className="input" style={{ padding: '0.4rem' }}
-                              onChange={e => { if (e.target.files?.[0]) setApprovalFile(e.target.files[0]) }} />
+                            <input type="file" accept=".pdf,application/pdf" className="input" style={{ padding: '0.4rem' }}
+                              onChange={async e => { 
+                                const file = e.target.files?.[0]
+                                if (file) {
+                                  if (file.type !== 'application/pdf') {
+                                    return toast.error('Only PDF files are allowed')
+                                  }
+                                  if (file.size > 10 * 1024 * 1024) {
+                                    return toast.error('File size must be less than 10MB')
+                                  }
+                                  const validMagicBytes = await isPdfMagicBytes(file)
+                                  if (!validMagicBytes) {
+                                    return toast.error('Invalid PDF file format')
+                                  }
+                                  setApprovalFile(file)
+                                }
+                              }} />
                           )}
                         </div>
                       )}
