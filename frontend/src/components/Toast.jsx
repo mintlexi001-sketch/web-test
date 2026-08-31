@@ -1,5 +1,5 @@
 /* eslint-disable react-refresh/only-export-components */
-import { createContext, useContext, useState, useCallback } from 'react'
+import { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react'
 import { CheckCircle, XCircle } from 'lucide-react'
 
 const ToastContext = createContext(null)
@@ -8,23 +8,30 @@ let toastId = 0
 
 export function ToastProvider({ children }) {
   const [toasts, setToasts] = useState([])
+  // useRef so the Set persists across re-renders without causing them
+  const activeTimers = useRef(new Set())
 
-  const timerIds = useCallback(() => {}, [])
-  const activeTimers = new Set()
+  // Clear all pending timers if the provider ever unmounts (test teardown, SSR, etc.)
+  useEffect(() => {
+    const timers = activeTimers.current
+    return () => {
+      timers.forEach(clearTimeout)
+      timers.clear()
+    }
+  }, [])
 
   const toast = useCallback(({ message, type = 'default', duration = 3500 }) => {
     const id = ++toastId
     setToasts(prev => [...prev, { id, message, type }])
     const timerId = setTimeout(() => {
       setToasts(prev => prev.filter(t => t.id !== id))
-      activeTimers.delete(timerId)
+      activeTimers.current.delete(timerId)
     }, duration)
-    activeTimers.add(timerId)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    activeTimers.current.add(timerId)
   }, [])
 
-  toast.success = (msg, opts = {}) => toast({ message: msg, type: 'success', duration: opts.duration })
-  toast.error   = (msg, opts = {}) => toast({ message: msg, type: 'error', duration: opts.duration })
+  toast.success = (msg, opts = {}) => toast({ message: msg, type: 'success', duration: opts.duration ?? 3500 })
+  toast.error   = (msg, opts = {}) => toast({ message: msg, type: 'error',   duration: opts.duration ?? 3500 })
 
   return (
     <ToastContext.Provider value={toast}>
