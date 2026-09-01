@@ -274,6 +274,7 @@ function VolumeGrid({ volumes, onSelectIssue }) {
         display: 'grid',
         gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
         gap: '1.75rem',
+        alignItems: 'start',
       }}>
         {volKeys.map((volKey, vi) => {
           const vol = volumes[volKey]
@@ -286,13 +287,14 @@ function VolumeGrid({ volumes, onSelectIssue }) {
 
           return (
             <div key={volKey} style={{
-              background: 'var(--card)',
-              border: '1px solid var(--border)',
+              background: '#ffffff',
+              border: '1.5px solid #cbd5e1',
               borderRadius: '1.25rem',
               overflow: 'hidden',
-              boxShadow: '0 8px 30px rgba(0, 0, 0, 0.08)',
+              boxShadow: '0 8px 30px rgba(15, 23, 42, 0.08)',
               display: 'flex',
               flexDirection: 'column',
+              minHeight: '240px',
             }}>
               {/* Volume header */}
               <div style={{
@@ -301,7 +303,7 @@ function VolumeGrid({ volumes, onSelectIssue }) {
                   : 'linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%)',
                 padding: '1.25rem 1.5rem',
                 position: 'relative',
-                overflow: 'hidden',
+                flexShrink: 0,
               }}>
                 {/* decorative circle */}
                 <div style={{
@@ -327,79 +329,93 @@ function VolumeGrid({ volumes, onSelectIssue }) {
                 </div>
               </div>
 
-              {/* Issue buttons container — theme-aware */}
+              {/* Issue list — statically open & permanently visible */}
               <div style={{
                 padding: '1.25rem',
                 display: 'flex',
                 flexDirection: 'column',
                 gap: '0.75rem',
-                background: 'var(--card)',
+                background: '#ffffff',
                 flex: 1,
+                minHeight: '140px',
               }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.1rem' }}>
-                  <p style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--primary)', textTransform: 'uppercase', letterSpacing: '0.1em', margin: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.2rem' }}>
+                  <p style={{ fontSize: '0.8rem', fontWeight: 800, color: '#1e3a8a', textTransform: 'uppercase', letterSpacing: '0.08em', margin: 0 }}>
                     Issues
                   </p>
-                  <span style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--muted-foreground)' }}>
+                  <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#64748b' }}>
                     {issueKeys.length} issue{issueKeys.length !== 1 ? 's' : ''} available
                   </span>
                 </div>
 
-                {issueKeys.map((issKey, ii) => {
+                {issueKeys.map((issKey) => {
                   const iss = vol.issues[issKey]
-                  const isLatest = vi === 0 && ii === issueKeys.length - 1
                   return (
-                    <button
+                    <div
                       key={issKey}
+                      role="button"
+                      tabIndex={0}
                       onClick={() => onSelectIssue(volKey, issKey)}
+                      onKeyDown={e => (e.key === 'Enter' || e.key === ' ') && onSelectIssue(volKey, issKey)}
                       style={{
-                        width: '100%',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'space-between',
-                        padding: '0.85rem 1rem',
-                        background: isLatest ? 'rgba(37, 99, 235, 0.12)' : 'var(--muted)',
-                        border: isLatest ? '1.5px solid var(--primary)' : '1px solid var(--border)',
-                        borderRadius: '0.75rem',
+                        padding: '0.9rem 1.15rem',
+                        background: '#ffffff',
+                        border: '1.5px solid #2563eb',
+                        borderRadius: '0.9rem',
                         cursor: 'pointer',
-                        transition: 'all 0.18s ease',
+                        transition: 'transform 0.15s ease, background 0.15s ease, box-shadow 0.15s ease',
                         gap: '0.75rem',
-                        color: 'var(--foreground)',
+                        boxSizing: 'border-box',
+                        boxShadow: '0 2px 8px rgba(37, 99, 235, 0.06)',
                       }}
                       onMouseEnter={e => {
-                        e.currentTarget.style.background = 'rgba(37, 99, 235, 0.22)'
-                        e.currentTarget.style.borderColor = 'var(--primary)'
+                        e.currentTarget.style.background = '#eff6ff'
+                        e.currentTarget.style.transform = 'translateY(-1px)'
+                        e.currentTarget.style.boxShadow = '0 4px 12px rgba(37, 99, 235, 0.12)'
                       }}
                       onMouseLeave={e => {
-                        e.currentTarget.style.background = isLatest ? 'rgba(37, 99, 235, 0.12)' : 'var(--muted)'
-                        e.currentTarget.style.borderColor = isLatest ? '1.5px solid var(--primary)' : '1px solid var(--border)'
+                        e.currentTarget.style.background = '#ffffff'
+                        e.currentTarget.style.transform = 'none'
+                        e.currentTarget.style.boxShadow = '0 2px 8px rgba(37, 99, 235, 0.06)'
                       }}
                     >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', minWidth: 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem', minWidth: 0 }}>
                         <span style={{
-                          fontSize: '0.75rem', fontWeight: 800, width: '1.75rem', height: '1.75rem',
+                          fontSize: '0.85rem',
+                          fontWeight: 800,
+                          width: '2rem',
+                          height: '2rem',
                           borderRadius: '50%',
-                          background: 'var(--primary)',
-                          color: '#ffffff', flexShrink: 0,
-                          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                          background: '#2563eb',
+                          color: '#ffffff',
+                          flexShrink: 0,
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          boxShadow: '0 2px 6px rgba(37, 99, 235, 0.3)',
                         }}>
                           {issKey}
                         </span>
-                        <span style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--foreground)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        <span style={{ fontSize: '1rem', fontWeight: 700, color: '#0f172a' }}>
                           Issue {issKey}
                         </span>
-                        {isLatest && (
-                          <span style={{ fontSize: '0.62rem', fontWeight: 800, color: '#ffffff', background: 'var(--primary)', padding: '0.15rem 0.5rem', borderRadius: '999px', flexShrink: 0, letterSpacing: '0.04em' }}>
-                            LATEST
-                          </span>
-                        )}
                       </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
-                        <span style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--primary)', background: 'rgba(37, 99, 235, 0.12)', padding: '0.2rem 0.65rem', borderRadius: '999px' }}>
-                          {iss.papers.length} paper{iss.papers.length !== 1 ? 's' : ''}
-                        </span>
-                      </div>
-                    </button>
+                      <span style={{
+                        fontSize: '0.82rem',
+                        fontWeight: 700,
+                        color: '#1e40af',
+                        background: '#e0f2fe',
+                        padding: '0.35rem 0.85rem',
+                        borderRadius: '999px',
+                        whiteSpace: 'nowrap',
+                        flexShrink: 0,
+                      }}>
+                        {iss.papers.length} paper{iss.papers.length !== 1 ? 's' : ''}
+                      </span>
+                    </div>
                   )
                 })}
               </div>
