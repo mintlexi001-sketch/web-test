@@ -51,32 +51,6 @@ const checkAdmin = async (userId) => {
 const validateEmail = (email) => typeof email === 'string' && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 const validateString = (str, maxLen = 200) => typeof str === 'string' && str.trim().length > 0 && str.trim().length <= maxLen;
 
-// Turnstile verification helper
-const verifyTurnstile = async (token) => {
-  if (!process.env.TURNSTILE_SECRET_KEY) {
-    // SEC-003: Fail closed — a missing secret key means CAPTCHA is misconfigured.
-    // Silently allowing requests here would disable CAPTCHA in production without operators knowing.
-    console.error('CRITICAL: TURNSTILE_SECRET_KEY is not set. Blocking CAPTCHA-protected request.');
-    return false;
-  }
-  if (!token) return false;
-  try {
-    const res = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({
-        secret: process.env.TURNSTILE_SECRET_KEY,
-        response: token
-      })
-    });
-    const data = await res.json();
-    return data.success;
-  } catch (err) {
-    console.error('Turnstile verification error:', err);
-    return false;
-  }
-};
-
 // ── Helper: insert in-app notification ────────────────────────────────
 const insertNotification = async (userId, title, message, link) => {
   if (!userId) return;
@@ -375,19 +349,13 @@ exports.notifyPaperDeleted = async (req, res) => {
 
 // ── Notify admin: new full-paper request ──────────────────────────────
 exports.notifyPaperRequest = async (req, res) => {
-  const { requesterName, requesterEmail, journalTitle, journalId, affiliation, reason, website_url, turnstileToken } = req.body;
+  const { requesterName, requesterEmail, journalTitle, journalId, affiliation, reason, website_url } = req.body;
   
   // HONEYPOT: If the hidden website_url field is filled out, this is a spam bot.
   // Silently drop the request but return success so the bot doesn't retry.
   if (website_url) {
     console.log(`Blocked spam request from bot for paper: ${journalTitle}`);
     return res.status(200).json({ success: true, honeypot: true });
-  }
-
-  // Verify CAPTCHA (Turnstile) — SEC-002: CAPTCHA must gate the DB insert, not just the email
-  const isHuman = await verifyTurnstile(turnstileToken);
-  if (!isHuman) {
-    return res.status(400).json({ error: 'CAPTCHA verification failed. Please try again.' });
   }
 
   // Input validation — prevent bots from sending oversized strings or malformed emails
@@ -397,9 +365,9 @@ exports.notifyPaperRequest = async (req, res) => {
   if (affiliation && typeof affiliation === 'string' && affiliation.length > 200) return res.status(400).json({ error: 'Affiliation too long (max 200 chars)' });
   if (reason && typeof reason === 'string' && reason.length > 1000) return res.status(400).json({ error: 'Reason too long (max 1000 chars)' });
 
-  // SEC-002: Insert the paper_requests row server-side AFTER CAPTCHA passes.
-  // The frontend no longer inserts directly into Supabase, so CAPTCHA now gates
-  // the database write — bots cannot create rows without passing Turnstile.
+  // SEC-002: Insert the paper_requests row server-side after honeypot validation passes.
+  // The frontend no longer inserts directly into Supabase — the server owns all DB writes.
+  // Bots are caught by the honeypot field (website_url) above.
   if (journalId) {
     const { error: insertError } = await supabase.from('paper_requests').insert({
       journal_id: journalId,
@@ -518,14 +486,8 @@ exports.notifyPaperDelivery = async (req, res) => {
 
 // ── Contact Form (Public) ───────────────────────────────────────────────
 exports.notifyContact = async (req, res) => {
-  const { name, email, subject, message, turnstileToken } = req.body;
+  const { name, email, subject, message } = req.body;
   
-  // Verify CAPTCHA (Turnstile)
-  const isHuman = await verifyTurnstile(turnstileToken);
-  if (!isHuman) {
-    return res.status(400).json({ error: 'CAPTCHA verification failed. Please try again.' });
-  }
-
   if (!name || !email || !subject || !message) {
     return res.status(400).json({ error: 'Missing required fields' });
   }

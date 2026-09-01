@@ -1,4 +1,4 @@
-﻿# render.yaml — Render deployment config for the backend
+# render.yaml — Render deployment config for the backend
 # Reference: https://render.com/docs/blueprint-spec
 #
 # To use: link your GitHub repo in the Render dashboard and this file
@@ -18,4 +18,4 @@ services:
         value: production
       # Set these in the Render dashboard (never hardcode secrets here):
       # EMAIL_USER, EMAIL_PASS, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY,
-      # APP_URL, FRONTEND_URL, TURNSTILE_SECRET_KEY, SENTRY_DSN (optional)
+      # APP_URL, FRONTEND_URL, SENTRY_DSN (optional)

@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { BookOpen, Home, Eye, EyeOff, Mail, ShieldCheck, KeyRound } from 'lucide-react'
-import { Turnstile } from '@marsidev/react-turnstile'
 import { API_BASE } from '../lib/api'
 
 
@@ -19,7 +18,6 @@ export default function ForgotPassword() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [passwordError, setPasswordError] = useState('')
-  const [turnstileToken, setTurnstileToken] = useState(null)
 
   /* ── Helpers ──────────────────────────────────────────── */
 
@@ -41,7 +39,7 @@ export default function ForgotPassword() {
       const res = await fetch(`${API_BASE}/api/auth/reset-otp`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, turnstileToken })
+        body: JSON.stringify({ email })
       })
       if (!res.ok) {
         const data = await res.json()
@@ -167,15 +165,6 @@ export default function ForgotPassword() {
                   />
                 </div>
 
-                <div style={{ display: 'flex', justifyContent: 'center', margin: '0.5rem 0' }}>
-                  <Turnstile
-                    siteKey={import.meta.env.VITE_TURNSTILE_SITE_KEY}
-                    onSuccess={(token) => setTurnstileToken(token)}
-                    onExpire={() => setTurnstileToken(null)}
-                    onError={() => setTurnstileToken(null)}
-                    options={{ theme: 'auto' }}
-                  />
-                </div>
 
                 <button type="submit" className="btn btn-primary w-full" disabled={loading}>
                   {loading ? (

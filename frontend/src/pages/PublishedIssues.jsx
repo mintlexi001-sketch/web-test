@@ -3,7 +3,6 @@ import { Search, X } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { sendNotification } from '../lib/api'
 import { useToast } from '../components/Toast'
-import { Turnstile } from '@marsidev/react-turnstile'
 import { AnimatedSection, StaggerContainer, StaggerItem } from '../components/ui/AnimatedSection'
 import { Card3D } from '../components/ui/Card3D'
 import { GoldUnderline } from '../components/ui/GoldUnderline'
@@ -24,7 +23,6 @@ export default function PublishedIssues() {
   const [requesterName, setRequesterName] = useState('')
   const [requesterEmail, setRequesterEmail] = useState('')
   const [submitting, setSubmitting] = useState(false)
-  const [turnstileToken, setTurnstileToken] = useState(null)
 
   useEffect(() => {
     fetchIssues()
@@ -60,10 +58,6 @@ export default function PublishedIssues() {
 
   const handleRequestSubmit = async (e) => {
     e.preventDefault()
-    if (!turnstileToken) {
-      toast.error('Please complete the CAPTCHA verification')
-      return
-    }
     setSubmitting(true)
 
     try {
@@ -75,7 +69,6 @@ export default function PublishedIssues() {
         affiliation: '',
         reason: '',
         website_url: '',
-        turnstileToken
       })
 
       if (!res || !res.ok) {
@@ -224,13 +217,6 @@ export default function PublishedIssues() {
                   <label>Your Email</label>
                   <input type="email" className="input" placeholder="john@university.edu" value={requesterEmail} onChange={e => setRequesterEmail(e.target.value)} required />
                   <p className="text-xs text-muted mt-1">We will send the PDF file to this email.</p>
-                </div>
-                <div className="form-group" style={{ display: 'flex', justifyContent: 'center' }}>
-                  <Turnstile 
-                    siteKey={import.meta.env.VITE_TURNSTILE_SITE_KEY || '1x00000000000000000000AA'} 
-                    onSuccess={(token) => setTurnstileToken(token)} 
-                    onError={() => toast.error('CAPTCHA failed to load')}
-                  />
                 </div>
                 <button type="submit" className="btn btn-primary w-full" disabled={submitting}>
                   {submitting ? 'Sending Request...' : 'Send Request to Admin'}

@@ -6,7 +6,6 @@ import { sendNotification } from '../lib/api'
 import { AnimatedSection } from '../components/ui/AnimatedSection'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../components/Toast'
-import { Turnstile } from '@marsidev/react-turnstile'
 
 export default function PaperDetail() {
   const toast = useToast()
@@ -21,7 +20,6 @@ export default function PaperDetail() {
   const [form, setForm] = useState({ name: '', email: '', affiliation: '', reason: '', website_url: '' })
   const [submitting, setSubmitting] = useState(false)
   const [submitted, setSubmitted] = useState(false)
-  const [turnstileToken, setTurnstileToken] = useState(null)
 
   useEffect(() => {
     if (user || profile) {
@@ -79,10 +77,6 @@ export default function PaperDetail() {
   async function handleRequestSubmit(e) {
     e.preventDefault()
     if (!form.name.trim() || !form.email.trim()) return
-    if (!turnstileToken) {
-      toast.error('Please complete the CAPTCHA verification')
-      return
-    }
     setSubmitting(true)
     try {
       // SEC-002: paper_requests insert is now handled securely in the backend AFTER CAPTCHA validation.
@@ -94,7 +88,6 @@ export default function PaperDetail() {
         affiliation: form.affiliation.trim(),
         reason: form.reason.trim(),
         website_url: form.website_url, // HONEYPOT
-        turnstileToken
       })
       if (!res || !res.ok) {
         toast.error('Failed to submit request. Please try again.')
@@ -303,9 +296,6 @@ export default function PaperDetail() {
                   <textarea id="req-reason" className="input" style={{ minHeight: '90px', resize: 'vertical' }}
                     placeholder="Briefly describe your research purpose or reason for requesting the full paper..."
                     value={form.reason} onChange={e => setForm(p => ({ ...p, reason: e.target.value }))} />
-                </div>
-                <div className="form-group" style={{ marginBottom: '1rem', display: 'flex', justifyContent: 'center' }}>
-                  <Turnstile siteKey={import.meta.env.VITE_TURNSTILE_SITE_KEY} onSuccess={(token) => setTurnstileToken(token)} />
                 </div>
                 <div style={{ display: 'flex', gap: '0.75rem' }}>
                   <button type="submit" className="btn btn-primary" disabled={submitting}>

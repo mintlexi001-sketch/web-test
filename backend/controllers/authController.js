@@ -48,34 +48,9 @@ const validateNotTempEmail = (email) => {
   return allowedProviders.includes(domain) || isAcademic;
 };
 
-// SEC-024: Turnstile verification — same pattern as notifyController.js
-// Fails closed if secret key is missing or token is absent.
-const verifyTurnstile = async (token) => {
-  if (!process.env.TURNSTILE_SECRET_KEY) {
-    console.error('CRITICAL: TURNSTILE_SECRET_KEY is not set. Blocking CAPTCHA-protected request.');
-    return false;
-  }
-  if (!token) return false;
-  try {
-    const resp = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ secret: process.env.TURNSTILE_SECRET_KEY, response: token }),
-    });
-    const data = await resp.json();
-    return data.success === true;
-  } catch (e) {
-    console.error('Turnstile verification error:', e);
-    return false;
-  }
-};
 
 exports.sendRegisterOTP = async (req, res) => {
-  const { email, role, turnstileToken } = req.body;
-
-  // SEC-024: Require Turnstile CAPTCHA on OTP send — prevents email-flooding abuse
-  const captchaOk = await verifyTurnstile(turnstileToken);
-  if (!captchaOk) return res.status(400).json({ error: 'CAPTCHA verification failed. Please refresh and try again.' });
+  const { email, role } = req.body;
 
   if (!validateEmail(email)) return res.status(400).json({ error: 'Invalid email format' });
   if (!validateNotTempEmail(email)) return res.status(400).json({ error: 'Please use a standard email provider (Gmail, Outlook, etc.) or a college domain' });
@@ -192,11 +167,7 @@ exports.verifyRegisterOTP = async (req, res) => {
 };
 
 exports.sendResetOTP = async (req, res) => {
-  const { email, turnstileToken } = req.body;
-
-  // SEC-024: Require Turnstile CAPTCHA on password reset OTP — prevents email-flooding abuse
-  const captchaOk = await verifyTurnstile(turnstileToken);
-  if (!captchaOk) return res.status(400).json({ error: 'CAPTCHA verification failed. Please refresh and try again.' });
+  const { email } = req.body;
 
   if (!validateEmail(email)) return res.status(400).json({ error: 'Invalid email format' });
   if (!validateNotTempEmail(email)) return res.status(400).json({ error: 'Please use a standard email provider or a college domain' });

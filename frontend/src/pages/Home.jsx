@@ -1,7 +1,6 @@
 import { Link } from 'react-router-dom'
 import { useState, useEffect } from 'react'
 import { Users, ChevronRight, ChevronDown } from 'lucide-react'
-import { Turnstile } from '@marsidev/react-turnstile'
 import { useToast } from '../components/Toast'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
@@ -686,7 +685,6 @@ function ContactSection() {
   const toast = useToast()
   const { user } = useAuth()
   const [submitting, setSubmitting] = useState(false)
-  const [turnstileToken, setTurnstileToken] = useState(null)
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -698,15 +696,10 @@ function ContactSection() {
     const subject = form['c-subject'].value;
     const message = form['c-message'].value;
 
-    if (!turnstileToken) {
-      toast.error('Please complete the CAPTCHA verification');
-      setSubmitting(false);
-      return;
-    }
 
     try {
       const res = await sendNotification('/api/notify/contact', {
-        name, email, subject, message, turnstileToken
+        name, email, subject, message
       });
 
       if (!res || !res.ok) throw new Error('Failed to send message');
@@ -759,9 +752,6 @@ function ContactSection() {
                       <div className="form-group">
                         <label htmlFor="c-message">Message</label>
                         <textarea id="c-message" className="textarea" placeholder="Your message..." rows={4} required />
-                      </div>
-                      <div className="form-group" style={{ marginBottom: '1rem', display: 'flex', justifyContent: 'center' }}>
-                        <Turnstile siteKey={import.meta.env.VITE_TURNSTILE_SITE_KEY} onSuccess={(token) => setTurnstileToken(token)} />
                       </div>
                       <button type="submit" className="btn btn-primary w-full" disabled={submitting}>
                         {submitting ? 'Sending…' : 'Send Message'}

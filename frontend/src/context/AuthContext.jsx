@@ -77,11 +77,11 @@ export function AuthProvider({ children }) {
     return data
   }
 
-  async function requestRegisterOTP(email, role, turnstileToken) {
+  async function requestRegisterOTP(email, role) {
     const res = await fetch(`${API_BASE}/api/auth/register-otp`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, role, turnstileToken })
+      body: JSON.stringify({ email, role })
     })
     if (!res.ok) {
       const data = await res.json()
