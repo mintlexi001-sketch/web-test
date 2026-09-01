@@ -441,7 +441,7 @@ function HeroSection() {
           </AnimatedSection>
 
           {/* RIGHT: Previous Issue sidebar */}
-          <AnimatedSection direction="left" delay={0.2}>
+          <AnimatedSection direction="left" delay={0.2} style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', paddingTop: '2.5rem', paddingLeft: '0' }}>
             {loading ? (
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', minHeight: '300px' }}>
                 <div className="spinner" />

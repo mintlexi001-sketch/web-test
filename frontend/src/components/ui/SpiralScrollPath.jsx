@@ -115,7 +115,7 @@ function SpiralScrollPathCore({ isMobile }) {
   // ─── Position via transform (NOT top/left — avoids layout recalculation) ──
   // MOBILE FIX: bookY starts at 60vh (below text) and stays generally lower.
   // bookX is centered/shifted slightly so it doesn't clip off screen.
-  const deskX = ['calc(65vw - 77px)', 'calc(25vw - 77px)', 'calc(78vw - 77px)', 'calc(32vw - 77px)', 'calc(85vw - 77px)', 'calc(90vw - 77px)'];
+  const deskX = ['calc(56vw - 77px)', 'calc(25vw - 77px)', 'calc(78vw - 77px)', 'calc(32vw - 77px)', 'calc(85vw - 77px)', 'calc(90vw - 77px)'];
   const deskY = ['calc(30vh - 102px)', 'calc(35vh - 102px)', 'calc(55vh - 102px)', 'calc(75vh - 102px)', 'calc(80vh - 102px)', 'calc(80vh - 102px)'];
   
   const mobX = ['calc(50vw - 77px)', 'calc(10vw - 77px)', 'calc(70vw - 77px)', 'calc(15vw - 77px)', 'calc(65vw - 77px)', 'calc(50vw - 77px)'];

@@ -3350,6 +3350,7 @@ section,
 .mobile-title {
   display: none;
 }
+
 .desktop-title {
   display: inline;
   white-space: nowrap;
@@ -3531,7 +3532,7 @@ button.btn-ghost:hover,
 /* ── About / Feature Cards ───────────────────────────────────── */
 .about-section {
   padding: 6rem 1rem;
-  background: var(--background);
+  background: transparent;
 }
 
 .features-grid {
@@ -3688,7 +3689,7 @@ button.btn-ghost:hover,
 /* ── Contact Section ─────────────────────────────────────────── */
 .contact-section {
   padding: 6rem 1rem;
-  background: var(--background);
+  background: transparent;
 }
 
 .contact-grid {
@@ -4021,19 +4022,35 @@ input[type="password"]::-webkit-credentials-auto-fill-button {
 
 /* Book shimmer — CSS-only (replaces Framer Motion animate loop) */
 @keyframes bookShimmer {
-  0% { transform: translateX(-100%); }
-  20% { transform: translateX(220%); }
-  100% { transform: translateX(220%); }
+  0% {
+    transform: translateX(-100%);
+  }
+
+  20% {
+    transform: translateX(220%);
+  }
+
+  100% {
+    transform: translateX(220%);
+  }
 }
 
 /* Static book float — for low-end / mobile */
 @keyframes bookFloat {
-  0%, 100% { transform: translateY(0px); }
-  50% { transform: translateY(-12px); }
+
+  0%,
+  100% {
+    transform: translateY(0px);
+  }
+
+  50% {
+    transform: translateY(-12px);
+  }
 }
 
 /* ── Reduced motion: disable ALL decorative animations ── */
 @media (prefers-reduced-motion: reduce) {
+
   *,
   *::before,
   *::after {
@@ -4076,24 +4093,23 @@ input[type="password"]::-webkit-credentials-auto-fill-button {
   width: 100%;
 }
 
-/* ── Hero text card: opaque on mobile so book never obscures text ── */
+/* ── Hero text card: always opaque so book never bleeds through ── */
 .hero-text-card {
-  /* Desktop: subtle glass with backdrop blur */
+  /* Always opaque — the near-transparent inline style lets the book show through */
+  background: var(--background) !important;
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
+  position: relative;
+  z-index: 10;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 900px) {
   .hero-text-card {
-    /* Mobile: solid background — book is decorative, text must be readable */
-    background: var(--background);
+    /* Narrow / single-column: drop blur too */
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
     border-color: var(--border);
     box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
-    /* Ensure it sits above the static book (zIndex 0) */
-    position: relative;
-    z-index: 2;
   }
 }
 
@@ -4108,9 +4124,11 @@ input[type="password"]::-webkit-credentials-auto-fill-button {
   .hero-journal-title {
     font-size: clamp(1.8rem, 8vw, 2.6rem);
   }
+
   .desktop-title {
     display: none;
   }
+
   .mobile-title {
     display: inline-block;
     line-height: 1.2;
@@ -4143,6 +4161,7 @@ input[type="password"]::-webkit-credentials-auto-fill-button {
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
 }
+
 @media (max-width: 900px) {
   .auth-left-panel {
     display: none;
