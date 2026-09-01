@@ -286,12 +286,13 @@ function VolumeGrid({ volumes, onSelectIssue }) {
 
           return (
             <div key={volKey} style={{
-              background: '#ffffff',
-              border: '1.5px solid rgba(29, 78, 216, 0.22)',
+              background: 'var(--card)',
+              border: '1px solid var(--border)',
               borderRadius: '1.25rem',
               overflow: 'hidden',
-              boxShadow: '0 10px 32px rgba(29, 78, 216, 0.10)',
-              transition: 'all 0.2s ease',
+              boxShadow: '0 8px 30px rgba(0, 0, 0, 0.08)',
+              display: 'flex',
+              flexDirection: 'column',
             }}>
               {/* Volume header */}
               <div style={{
@@ -326,22 +327,20 @@ function VolumeGrid({ volumes, onSelectIssue }) {
                 </div>
               </div>
 
-              {/* Issue buttons container - ALWAYS prominent, distinct background */}
+              {/* Issue buttons container — theme-aware */}
               <div style={{
                 padding: '1.25rem',
                 display: 'flex',
                 flexDirection: 'column',
                 gap: '0.75rem',
-                background: '#ffffff',
-                opacity: 1,
-                visibility: 'visible',
-                maxHeight: 'none',
+                background: 'var(--card)',
+                flex: 1,
               }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.1rem' }}>
-                  <p style={{ fontSize: '0.75rem', fontWeight: 800, color: '#1e3a8a', textTransform: 'uppercase', letterSpacing: '0.1em', margin: 0 }}>
+                  <p style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--primary)', textTransform: 'uppercase', letterSpacing: '0.1em', margin: 0 }}>
                     Issues
                   </p>
-                  <span style={{ fontSize: '0.72rem', fontWeight: 600, color: '#64748b' }}>
+                  <span style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--muted-foreground)' }}>
                     {issueKeys.length} issue{issueKeys.length !== 1 ? 's' : ''} available
                   </span>
                 </div>
@@ -358,48 +357,45 @@ function VolumeGrid({ volumes, onSelectIssue }) {
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'space-between',
-                        padding: '0.9rem 1.1rem',
-                        background: isLatest ? '#eff6ff' : '#f8fafc',
-                        border: isLatest ? '1.5px solid #3b82f6' : '1px solid #cbd5e1',
-                        borderRadius: '0.85rem',
+                        padding: '0.85rem 1rem',
+                        background: isLatest ? 'rgba(37, 99, 235, 0.12)' : 'var(--muted)',
+                        border: isLatest ? '1.5px solid var(--primary)' : '1px solid var(--border)',
+                        borderRadius: '0.75rem',
                         cursor: 'pointer',
                         transition: 'all 0.18s ease',
                         gap: '0.75rem',
-                        boxShadow: '0 2px 6px rgba(0,0,0,0.03)',
+                        color: 'var(--foreground)',
                       }}
                       onMouseEnter={e => {
-                        e.currentTarget.style.background = '#dbeafe'
-                        e.currentTarget.style.borderColor = '#1d4ed8'
-                        e.currentTarget.style.transform = 'translateX(4px)'
+                        e.currentTarget.style.background = 'rgba(37, 99, 235, 0.22)'
+                        e.currentTarget.style.borderColor = 'var(--primary)'
                       }}
                       onMouseLeave={e => {
-                        e.currentTarget.style.background = isLatest ? '#eff6ff' : '#f8fafc'
-                        e.currentTarget.style.borderColor = isLatest ? '1.5px solid #3b82f6' : '1px solid #cbd5e1'
-                        e.currentTarget.style.transform = ''
+                        e.currentTarget.style.background = isLatest ? 'rgba(37, 99, 235, 0.12)' : 'var(--muted)'
+                        e.currentTarget.style.borderColor = isLatest ? '1.5px solid var(--primary)' : '1px solid var(--border)'
                       }}
                     >
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', minWidth: 0 }}>
                         <span style={{
                           fontSize: '0.75rem', fontWeight: 800, width: '1.75rem', height: '1.75rem',
                           borderRadius: '50%',
-                          background: isLatest ? '#1d4ed8' : '#2563eb',
+                          background: 'var(--primary)',
                           color: '#ffffff', flexShrink: 0,
                           display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                          boxShadow: '0 2px 6px rgba(29,78,216,0.3)',
                         }}>
                           {issKey}
                         </span>
-                        <span style={{ fontSize: '0.95rem', fontWeight: 700, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        <span style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--foreground)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           Issue {issKey}
                         </span>
                         {isLatest && (
-                          <span style={{ fontSize: '0.62rem', fontWeight: 800, color: '#1d4ed8', background: '#dbeafe', padding: '0.15rem 0.5rem', borderRadius: '999px', flexShrink: 0, letterSpacing: '0.04em' }}>
+                          <span style={{ fontSize: '0.62rem', fontWeight: 800, color: '#ffffff', background: 'var(--primary)', padding: '0.15rem 0.5rem', borderRadius: '999px', flexShrink: 0, letterSpacing: '0.04em' }}>
                             LATEST
                           </span>
                         )}
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
-                        <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#1e3a8a', background: '#e0f2fe', padding: '0.2rem 0.65rem', borderRadius: '999px' }}>
+                        <span style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--primary)', background: 'rgba(37, 99, 235, 0.12)', padding: '0.2rem 0.65rem', borderRadius: '999px' }}>
                           {iss.papers.length} paper{iss.papers.length !== 1 ? 's' : ''}
                         </span>
                       </div>
