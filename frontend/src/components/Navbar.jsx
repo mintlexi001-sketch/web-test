@@ -151,7 +151,7 @@ export function Navbar() {
           </nav>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-            <div className="navbar-actions" style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+            <div className="navbar-actions">
               {loading ? (
                 <div style={{ width: '80px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <div className="spinner-sm" />
@@ -203,45 +203,8 @@ export function Navbar() {
               </button>
             </div>
 
-            {/* Mobile Actions */}
-            <div className="navbar-menu-btn" style={{ alignItems: 'center', gap: '0.5rem' }}>
-              {!loading && !user && (
-                <div className="auth-pill">
-                  <Link to="/login" className="auth-pill-login" style={{ padding: '0.35rem 0.65rem', fontSize: '0.78rem' }}>
-                    Login
-                  </Link>
-                  <Link to="/register" className="auth-pill-register" style={{ padding: '0.35rem 0.75rem', fontSize: '0.78rem' }}>
-                    Register
-                  </Link>
-                </div>
-              )}
-              {!loading && user && (
-                <>
-                  <Link 
-                    to="/notifications" 
-                    className="btn btn-sidebar btn-sm"
-                    style={{ position: 'relative', padding: '0.4rem 0.6rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                  >
-                    <Bell size={18} />
-                    {unreadCount > 0 && (
-                      <span style={{ position: 'absolute', top: '-4px', right: '-4px', backgroundColor: '#ef4444', color: 'white', fontSize: '10px', fontWeight: 'bold', padding: '2px 6px', borderRadius: '9999px', minWidth: '18px', textAlign: 'center', boxShadow: '0 1px 2px rgba(0,0,0,0.1)' }}>
-                        {unreadCount > 99 ? '99+' : unreadCount}
-                      </span>
-                    )}
-                  </Link>
-                  <Link to={dashboardPath} className="btn btn-sidebar-solid btn-sm" style={{ padding: '0.4rem 0.75rem' }}>
-                    Dashboard
-                  </Link>
-                </>
-              )}
-              <button
-                onClick={toggleTheme}
-                className="theme-toggle-btn"
-                title={theme === 'dark' ? "Switch to Light Mode" : "Switch to Dark Mode"}
-                aria-label="Toggle theme"
-              >
-                {theme === 'dark' ? <Sun size={17} /> : <Moon size={17} />}
-              </button>
+            {/* Mobile Actions Button */}
+            <div className="navbar-menu-btn">
               <button
                 className="btn btn-primary btn-icon"
                 style={{ zIndex: 9999, position: 'relative' }}
