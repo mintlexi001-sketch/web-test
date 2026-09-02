@@ -300,7 +300,17 @@ module.exports = app;
 if (process.env.VERCEL !== '1' && process.env.NODE_ENV !== 'test') {
   const PORT = process.env.PORT || 3001;
 
-  app.listen(PORT, '0.0.0.0', () => {
+  const server = app.listen(PORT, '0.0.0.0', () => {
     console.log(`Email & Auth Server running on port ${PORT}`);
+  });
+
+  server.on('error', (err) => {
+    if (err.code === 'EADDRINUSE') {
+      console.error(`\n❌ Error: Port ${PORT} is ALREADY IN USE by another process!`);
+      console.error(`   The backend server is already running in the background.`);
+      console.error(`   If you want to restart it, kill the existing process on port ${PORT} first.\n`);
+    } else {
+      console.error('Server Error:', err);
+    }
   });
 }
