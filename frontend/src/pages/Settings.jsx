@@ -351,7 +351,7 @@ export default function Settings() {
           setDeleteConfirmOpen(false)
           handleScheduleDeletion()
         }}
-        onCancel={() => setDeleteConfirmOpen(false)}
+        onClose={() => setDeleteConfirmOpen(false)}
       />
     </div>
   )

@@ -1049,8 +1049,14 @@ BEGIN
   IF NOT EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin') THEN
     RAISE EXCEPTION 'Unauthorized';
   END IF;
-  IF EXISTS (SELECT 1 FROM public.journals WHERE id = ANY(p_journal_ids) AND status != 'accepted') THEN
-    RAISE EXCEPTION 'Cannot compile issue: All selected journals must be in "accepted" status';
+  -- Papers reach compile-eligible state as status='published' with volume_number IS NULL
+  -- (set by publish_pre_compile). Reject anything not in that state.
+  IF EXISTS (
+    SELECT 1 FROM public.journals
+    WHERE id = ANY(p_journal_ids)
+      AND (status != 'published' OR volume_number IS NOT NULL)
+  ) THEN
+    RAISE EXCEPTION 'Cannot compile issue: All selected journals must be in "Articles in Press" state (published with no volume assigned)';
   END IF;
   UPDATE public.journals SET
     volume_number = p_volume,
@@ -1073,26 +1079,11 @@ COMMIT;
 -- ============================================================
 -- ADMIN PROMOTION RPC
 -- ============================================================
--- Allows an existing active admin to promote a student or reviewer to admin.
-CREATE OR REPLACE FUNCTION public.promote_to_admin(p_user_id uuid)
-RETURNS void
-LANGUAGE plpgsql
-SECURITY DEFINER
-AS $$
-BEGIN
-  -- Security check: ensure the caller is an active admin
-  IF NOT EXISTS (
-    SELECT 1 FROM public.profiles 
-    WHERE id = auth.uid() AND role = 'admin' AND status = 'active'
-  ) THEN
-    RAISE EXCEPTION 'Access denied: Only active admins can promote users';
-  END IF;
-
-  UPDATE public.profiles
-  SET role = 'admin', status = 'active'
-  WHERE id = p_user_id;
-END;
-$$;
+-- NOTE: The correct promote_to_admin definition (restricted to is_permanent = true)
+-- is defined at line ~471 above. The duplicate weaker definition that was here
+-- (which allowed any active admin to promote) has been removed to prevent it
+-- from silently overwriting the permanent-admin-only guard at runtime.
+-- See audit finding C-1.
 
 -- ============================================================
 -- MISSING ADMIN RPCs (from schema.sql)

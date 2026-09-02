@@ -77,7 +77,8 @@ export default function NotificationsPage() {
   }, [user, startDate, endDate])
 
   const markAsRead = async (id) => {
-    await supabase.from('notifications').update({ is_read: true }).eq('id', id)
+    if (!user) return
+    await supabase.from('notifications').update({ is_read: true }).eq('id', id).eq('user_id', user.id)
     fetchNotifications()
   }
 
@@ -89,7 +90,8 @@ export default function NotificationsPage() {
 
   const removeNotification = async (id, e) => {
     if (e) e.stopPropagation()
-    await supabase.from('notifications').delete().eq('id', id)
+    if (!user) return
+    await supabase.from('notifications').delete().eq('id', id).eq('user_id', user.id)
     setNotifications(prev => prev.filter(n => n.id !== id))
     setUnreadCount(prev => notifications.find(n => n.id === id && !n.is_read) ? prev - 1 : prev)
   }

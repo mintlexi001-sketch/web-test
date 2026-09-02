@@ -9,6 +9,7 @@ const statusLabels = { submitted: 'Submitted', under_review: 'Under Review', app
 export default function StudentDashboard() {
   const { user } = useAuth()
   const [journals, setJournals] = useState([])
+  const [stats, setStats] = useState({ total: 0, underReview: 0, approved: 0, rejected: 0 })
   const [loading, setLoading] = useState(true)
   const [fetchError, setFetchError] = useState(false)
 
@@ -20,34 +21,40 @@ export default function StudentDashboard() {
   async function fetchJournals() {
     setLoading(true)
     setFetchError(false)
-    const { data, error } = await supabase
-      .from('journals')
-      .select('id, title, status, created_at')
-      .eq('student_id', user.id)
-      .order('created_at', { ascending: false })
-      .limit(10)
+
+    // L-2 fix: fetch accurate per-status counts separately (no limit) and 3 recent items for the activity list.
+    const [
+      { count: total },
+      { count: underReview },
+      { count: approved },
+      { count: rejected },
+      { data: recent, error },
+    ] = await Promise.all([
+      supabase.from('journals').select('id', { count: 'exact', head: true }).eq('student_id', user.id),
+      supabase.from('journals').select('id', { count: 'exact', head: true }).eq('student_id', user.id).eq('status', 'under_review'),
+      supabase.from('journals').select('id', { count: 'exact', head: true }).eq('student_id', user.id).eq('status', 'approved'),
+      supabase.from('journals').select('id', { count: 'exact', head: true }).eq('student_id', user.id).eq('status', 'rejected'),
+      supabase.from('journals').select('id, title, status, created_at').eq('student_id', user.id).order('created_at', { ascending: false }).limit(3),
+    ])
+
     if (error) {
       console.error('StudentDashboard: failed to load journals', error.message)
       setFetchError(true)
     } else {
-      setJournals(data ?? [])
+      setJournals(recent ?? [])
+      setStats({ total: total ?? 0, underReview: underReview ?? 0, approved: approved ?? 0, rejected: rejected ?? 0 })
     }
     setLoading(false)
   }
 
-  const total = journals.length
-  const underReview = journals.filter(j => j.status === 'under_review').length
-  const approved = journals.filter(j => j.status === 'approved').length
-  const rejected = journals.filter(j => j.status === 'rejected').length
-
-  const stats = [
-    { label: 'Total Submissions', value: total, icon: FileText, color: 'var(--primary)' },
-    { label: 'Under Review', value: underReview, icon: Clock, color: '#d97706' },
-    { label: 'Accepted', value: approved, icon: CheckCircle, color: '#059669' },
-    { label: 'Rejected', value: rejected, icon: XCircle, },
+  const statCards = [
+    { label: 'Total Submissions', value: stats.total, icon: FileText, color: 'var(--primary)' },
+    { label: 'Under Review', value: stats.underReview, icon: Clock, color: '#d97706' },
+    { label: 'Accepted', value: stats.approved, icon: CheckCircle, color: '#059669' },
+    { label: 'Rejected', value: stats.rejected, icon: XCircle, },
   ]
 
-  const recentSubmissions = journals.slice(0, 3)
+  const recentSubmissions = journals
 
   return (
     <div className="space-y-6">
@@ -63,7 +70,7 @@ export default function StudentDashboard() {
 
       {/* Stats */}
       <div className="stats-grid">
-        {stats.map(({ label, value, icon: Icon, color }) => (
+        {statCards.map(({ label, value, icon: Icon, color }) => (
           <div key={label} className="card">
             <div className="card-content stat-card">
               <div className="stat-icon" style={{ color }}><Icon size={24} /></div>

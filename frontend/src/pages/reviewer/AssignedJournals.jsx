@@ -309,13 +309,13 @@ export function ReviewJournal() {
                   <div style={{
                     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                     padding: '1rem 1.25rem',
-                    background: 'linear-gradient(to right, color-mix(in srgb, var(--primary) 5%, transparent), transparent)',
+                    background: 'linear-gradient(to right, var(--gold-subtle), transparent)',
                     borderRadius: '0.75rem',
-                    border: '1px solid color-mix(in srgb, var(--primary) 15%, transparent)'
+                    border: '1px solid var(--gold-border)'
                   }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                      <div style={{ background: 'color-mix(in srgb, var(--primary) 15%, transparent)', padding: '0.5rem', borderRadius: '0.5rem' }}>
-                        <FileText size={20} style={{ color: 'var(--primary)' }} />
+                      <div style={{ background: 'var(--gold-muted)', padding: '0.5rem', borderRadius: '0.5rem' }}>
+                        <FileText size={20} style={{ color: 'var(--gold)' }} />
                       </div>
                       <div>
                         <p className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>Full Manuscript</p>

@@ -1,6 +1,7 @@
 import { motion, useScroll, useTransform, useSpring, useMotionValue } from 'framer-motion';
 import { useEffect } from 'react';
 import { useDeviceDetect } from '../../lib/useDeviceDetect';
+import { useTheme } from '../../context/ThemeContext';
 
 /* ─────────────────────────────────────────────────────────────────────────
    SCROLL-DRIVEN BOOK  ·  Performance-optimised for all devices
@@ -63,7 +64,7 @@ function Page({ flipProgress, index, isMobile }) {
         padding: '16px 14px 12px 20px',
         overflow: 'hidden',
       }}>
-        <div style={{ width: '48%', height: 4, background: 'linear-gradient(90deg, rgba(29,78,216,0.3), rgba(29,78,216,0.1))', borderRadius: 3, marginBottom: 10 }} />
+        <div style={{ width: '48%', height: 4, background: 'linear-gradient(90deg, rgba(201,168,76,0.5), rgba(201,168,76,0.15))', borderRadius: 3, marginBottom: 10 }} />
         <div style={{ width: '30%', height: 2.5, background: 'rgba(197,160,89,0.35)', borderRadius: 2, marginBottom: 10 }} />
         {lineWidths.map((w, li) =>
           w === 0
@@ -87,7 +88,7 @@ function Page({ flipProgress, index, isMobile }) {
         padding: '16px 18px 12px 14px',
         overflow: 'hidden',
       }}>
-        <div style={{ width: '42%', height: 4, background: 'linear-gradient(90deg, rgba(29,78,216,0.25), rgba(29,78,216,0.08))', borderRadius: 3, marginBottom: 10 }} />
+        <div style={{ width: '42%', height: 4, background: 'linear-gradient(90deg, rgba(201,168,76,0.4), rgba(201,168,76,0.12))', borderRadius: 3, marginBottom: 10 }} />
         <div style={{ width: '26%', height: 2.5, background: 'rgba(197,160,89,0.3)', borderRadius: 2, marginBottom: 10 }} />
         {backLines.map((w, li) =>
           w === 0
@@ -104,6 +105,8 @@ function Page({ flipProgress, index, isMobile }) {
 
 /* ── Full animated book ── */
 function SpiralScrollPathCore({ isMobile }) {
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
   const { scrollYProgress } = useScroll();
 
   // CRITICAL FIX: Bypass useSpring on mobile.
@@ -128,31 +131,58 @@ function SpiralScrollPathCore({ isMobile }) {
   const tiltX = useTransform(smooth, [0, 0.25, 0.5, 0.75, 1], [25, 40, 25, 45, 35]);
   const tiltY = useTransform(smooth, [0, 0.25, 0.5, 0.75, 1], [-18, 12, -8, 22, -12]);
   const tiltZ = useTransform(smooth, [0, 0.25, 0.5, 0.75, 1], [-6, 5, -5, 8, -6]);
+  // Mouse parallax motion values (desktop only)
+  const mouseX = useMotionValue(0);
+  const mouseY = useMotionValue(0);
+
+  useEffect(() => {
+    if (isMobile) return;
+    const onMove = (e) => {
+      mouseX.set((e.clientX / window.innerWidth - 0.5) * 2);
+      mouseY.set((e.clientY / window.innerHeight - 0.5) * 2);
+    };
+    window.addEventListener('mousemove', onMove);
+    return () => window.removeEventListener('mousemove', onMove);
+  }, [mouseX, mouseY, isMobile]);
+
+  // Transform 0-1 range based on screen width
+  const pRX = useTransform(mouseY, [-1, 1], [6, -6]);
+  const pRY = useTransform(mouseX, [-1, 1], [-10, 10]);
 
   const coverOpen = useTransform(smooth, [0, 0.08, 0.88, 0.96], [0, -180, -180, 0]);
   const coverZ = useTransform(smooth, [0, 0.08, 0.88, 0.96], [6, -6, -6, 6]);
 
   const pageFlips = usePageFlips(smooth);
 
-  // ─── Mouse parallax: desktop only ─────────────────────────────────────
-  const mouseX = useMotionValue(0);
-  const mouseY = useMotionValue(0);
-  const pRX = useSpring(useTransform(mouseY, [-20, 20], [8, -8]), { stiffness: 120, damping: 28 });
-  const pRY = useSpring(useTransform(mouseX, [-20, 20], [-8, 8]), { stiffness: 120, damping: 28 });
-
-  useEffect(() => {
-    if (isMobile) return;
-    const onMove = (e) => {
-      mouseX.set((e.clientX / window.innerWidth - 0.5) * 40);
-      mouseY.set((e.clientY / window.innerHeight - 0.5) * 40);
-    };
-    window.addEventListener('mousemove', onMove, { passive: true });
-    return () => window.removeEventListener('mousemove', onMove);
-  }, [mouseX, mouseY, isMobile]);
-
   // Mobile optimization: scale the whole book down slightly and drastically cut the 3D depth stack
   const scale = isMobile ? 0.85 : 1;
   const spineDepthLayers = isMobile ? 2 : 6;
+
+  // Dynamic theme colors for cover
+  const coverBg = isDark
+    ? 'linear-gradient(135deg, #0F172A 0%, #1E1B4B 50%, #312E81 100%)'
+    : 'linear-gradient(135deg, #1d3557 0%, #0d1b2a 70%, #1e3a8a 100%)';
+
+  const emblemBorder = isDark
+    ? '2.5px solid rgba(165,180,252,0.85)'
+    : '2.5px solid rgba(147,197,253,0.85)';
+
+  const emblemShadow = isDark
+    ? '0 0 20px rgba(129,140,248,0.65), inset 0 0 14px rgba(129,140,248,0.2)'
+    : '0 0 20px rgba(147,197,253,0.65), inset 0 0 14px rgba(147,197,253,0.2)';
+
+  const dividerMain = isDark
+    ? 'rgba(165,180,252,0.88)'
+    : 'rgba(147,197,253,0.88)';
+
+  const dividerSub = isDark
+    ? 'rgba(165,180,252,0.5)'
+    : 'rgba(147,197,253,0.5)';
+
+  const titleColor = isDark ? '#C4B5FD' : '#93C5FD';
+  const titleShadow = isDark
+    ? '0 1px 3px rgba(0,0,0,0.7), 0 0 12px rgba(196,181,253,0.5)'
+    : '0 1px 3px rgba(0,0,0,0.7), 0 0 12px rgba(147,197,253,0.5)';
 
   return (
     <div style={{
@@ -227,7 +257,7 @@ function SpiralScrollPathCore({ isMobile }) {
               {/* Front face — no Framer Motion animate loops inside */}
               <div style={{
                 position: 'absolute', inset: 0,
-                background: 'linear-gradient(135deg, #1e3a5f 0%, #091c3a 50%, #1D4ED8 100%)',
+                background: coverBg,
                 borderRadius: '2px 10px 10px 2px',
                 backfaceVisibility: 'hidden',
                 border: '0.5px solid rgba(255,255,255,0.14)',
@@ -246,8 +276,8 @@ function SpiralScrollPathCore({ isMobile }) {
                 {/* Logo emblem */}
                 <div style={{
                   width: 68, height: 68, borderRadius: '50%',
-                  border: '2.5px solid rgba(197,160,89,0.85)',
-                  boxShadow: '0 0 20px rgba(197,160,89,0.65), inset 0 0 14px rgba(197,160,89,0.2)',
+                  border: emblemBorder,
+                  boxShadow: emblemShadow,
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   overflow: 'hidden',
                   background: '#ffffff',
@@ -260,9 +290,9 @@ function SpiralScrollPathCore({ isMobile }) {
                   />
                 </div>
 
-                <div style={{ width: '56%', height: 2.5, background: 'rgba(197,160,89,0.88)', borderRadius: 2 }} />
-                <div style={{ width: '35%', height: 1.5, background: 'rgba(197,160,89,0.5)', borderRadius: 2 }} />
-                <div style={{ fontSize: 9.5, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#F3D275', fontFamily: 'Georgia, serif', marginTop: 6, textAlign: 'center', fontWeight: '800', textShadow: '0 1px 3px rgba(0,0,0,0.7), 0 0 12px rgba(243,210,117,0.5)' }}>
+                <div style={{ width: '56%', height: 2.5, background: dividerMain, borderRadius: 2 }} />
+                <div style={{ width: '35%', height: 1.5, background: dividerSub, borderRadius: 2 }} />
+                <div style={{ fontSize: 9.5, letterSpacing: '0.12em', textTransform: 'uppercase', color: titleColor, fontFamily: 'Georgia, serif', marginTop: 6, textAlign: 'center', fontWeight: '800', textShadow: titleShadow }}>
                   Science &amp; Society
                 </div>
               </div>

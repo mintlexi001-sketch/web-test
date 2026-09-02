@@ -140,7 +140,7 @@ function SidebarContent({ role, onClose }) {
                 <span style={{ ...badgeStyle, background: '#7c3aed', color: '#fff' }}>{paperRequestCount}</span>
               )}
               {to === '/admin/assigned-papers' && assignedCount > 0 && (
-                <span style={{ ...badgeStyle, background: '#2563eb', color: '#fff' }}>{assignedCount}</span>
+                <span style={{ ...badgeStyle, background: '#c9a84c', color: '#0A192F' }}>{assignedCount}</span>
               )}
             </Link>
           ))

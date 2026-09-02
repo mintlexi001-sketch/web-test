@@ -219,6 +219,7 @@ export function StudentJournalDetail() {
     e.preventDefault()
     if (!editTitle.trim()) { toast.error('Title is required'); return }
     if (!editAbstract.trim()) { toast.error('Abstract is required'); return }
+    if (!editKeywords.trim()) { toast.error('Keywords are required'); return }
     if (!editFile) { toast.error('Please upload the revised manuscript PDF'); return }
     setResubmitting(true)
 
@@ -361,9 +362,9 @@ export function StudentJournalDetail() {
                     />
                   </div>
                   <div className="form-group">
-                    <label className="text-sm font-medium">Keywords</label>
+                    <label className="text-sm font-medium">Keywords <span style={{ color: '#ef4444' }}>*</span></label>
                     <input className="input" value={editKeywords} onChange={e => setEditKeywords(e.target.value)}
-                      placeholder="comma-separated keywords" />
+                      placeholder="comma-separated keywords" required />
                   </div>
                   <div className="form-group">
                     <label className="text-sm font-medium">

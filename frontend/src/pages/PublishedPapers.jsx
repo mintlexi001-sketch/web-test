@@ -188,13 +188,13 @@ function IssueDetailView({ papers, volumeLabel, issueLabel, onBack }) {
               <span style={{ fontSize: '0.75rem', color: 'var(--muted-foreground)' }}>Publication Archive</span>
               <ChevronRight size={12} style={{ color: 'var(--muted-foreground)' }} />
               <span style={{
-                fontSize: '0.8rem', fontWeight: 700, color: 'var(--primary)',
-                background: 'rgba(29,78,216,0.1)', padding: '0.2rem 0.65rem', borderRadius: '999px',
+                fontSize: '0.8rem', fontWeight: 700, color: 'var(--gold)',
+                background: 'var(--gold-muted)', padding: '0.2rem 0.65rem', borderRadius: '999px',
               }}>{volumeLabel === 'Articles in Press' ? 'Upcoming Publications' : `Volume ${volumeLabel}`}</span>
               <ChevronRight size={12} style={{ color: 'var(--muted-foreground)' }} />
               <span style={{
-                fontSize: '0.8rem', fontWeight: 700, color: '#2563eb',
-                background: 'rgba(37,99,235,0.1)', padding: '0.2rem 0.65rem', borderRadius: '999px',
+                fontSize: '0.8rem', fontWeight: 700, color: 'var(--gold)',
+                background: 'var(--gold-muted)', padding: '0.2rem 0.65rem', borderRadius: '999px',
               }}>{issueLabel === 'Upcoming Papers' ? issueLabel : `Issue ${issueLabel}`}</span>
               <span style={{ fontSize: '0.78rem', color: 'var(--muted-foreground)', marginLeft: '0.25rem' }}>
                 {papers.length} paper{papers.length !== 1 ? 's' : ''}
@@ -276,7 +276,7 @@ function VolumeGrid({ volumes, onSelectIssue }) {
         gap: '1.75rem',
         alignItems: 'start',
       }}>
-        {volKeys.map((volKey, vi) => {
+        {volKeys.map((volKey) => {
           const vol = volumes[volKey]
           const issueKeys = Object.keys(vol.issues).sort((a, b) => {
             const numA = parseInt(a.replace(/\D/g, '')) || 0
@@ -287,11 +287,11 @@ function VolumeGrid({ volumes, onSelectIssue }) {
 
           return (
             <div key={volKey} style={{
-              background: '#ffffff',
-              border: '1.5px solid #cbd5e1',
+              background: 'var(--card)',
+              border: '1.5px solid var(--border)',
               borderRadius: '1.25rem',
               overflow: 'hidden',
-              boxShadow: '0 8px 30px rgba(15, 23, 42, 0.08)',
+              boxShadow: 'var(--shadow-card)',
               display: 'flex',
               flexDirection: 'column',
               minHeight: '240px',
@@ -300,7 +300,7 @@ function VolumeGrid({ volumes, onSelectIssue }) {
               <div style={{
                 background: volKey === 'Articles in Press'
                   ? 'linear-gradient(135deg, #b8860b 0%, #d4a017 50%, #c9960c 100%)'
-                  : 'linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%)',
+                  : 'linear-gradient(135deg, #1D4ED8 0%, #1e40af 100%)',
                 padding: '1.25rem 1.5rem',
                 position: 'relative',
                 flexShrink: 0,
@@ -309,12 +309,12 @@ function VolumeGrid({ volumes, onSelectIssue }) {
                 <div style={{
                   position: 'absolute', right: '-20px', top: '-20px',
                   width: '80px', height: '80px', borderRadius: '50%',
-                  background: 'rgba(255,255,255,0.07)',
+                  background: 'rgba(255,255,255,0.08)',
                 }} />
                 <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '0.75rem', position: 'relative' }}>
                   <div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.3rem' }}>
-                      <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#93c5fd', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+                      <span style={{ fontSize: '0.72rem', fontWeight: 800, color: '#fef08a', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
                         {volKey === 'Articles in Press' ? 'Upcoming' : 'Volume'}
                       </span>
                     </div>
@@ -322,7 +322,7 @@ function VolumeGrid({ volumes, onSelectIssue }) {
                   </div>
                   <div style={{ textAlign: 'right', flexShrink: 0 }}>
                     <p style={{ fontSize: '1.5rem', fontWeight: 800, color: '#ffffff', margin: 0, lineHeight: 1 }}>{totalPapers}</p>
-                    <p style={{ fontSize: '0.68rem', color: '#93c5fd', margin: 0, marginTop: '0.15rem' }}>
+                    <p style={{ fontSize: '0.72rem', fontWeight: 700, color: '#fef08a', margin: 0, marginTop: '0.15rem' }}>
                       paper{totalPapers !== 1 ? 's' : ''}
                     </p>
                   </div>
@@ -335,15 +335,15 @@ function VolumeGrid({ volumes, onSelectIssue }) {
                 display: 'flex',
                 flexDirection: 'column',
                 gap: '0.75rem',
-                background: '#ffffff',
+                background: 'var(--card)',
                 flex: 1,
                 minHeight: '140px',
               }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.2rem' }}>
-                  <p style={{ fontSize: '0.8rem', fontWeight: 800, color: '#1e3a8a', textTransform: 'uppercase', letterSpacing: '0.08em', margin: 0 }}>
+                  <p style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--gold)', textTransform: 'uppercase', letterSpacing: '0.08em', margin: 0 }}>
                     Issues
                   </p>
-                  <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#64748b' }}>
+                  <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)' }}>
                     {issueKeys.length} issue{issueKeys.length !== 1 ? 's' : ''} available
                   </span>
                 </div>
@@ -362,24 +362,23 @@ function VolumeGrid({ volumes, onSelectIssue }) {
                         alignItems: 'center',
                         justifyContent: 'space-between',
                         padding: '0.9rem 1.15rem',
-                        background: '#ffffff',
-                        border: '1.5px solid #2563eb',
+                        background: 'var(--bg-lifted)',
+                        border: '1.5px solid var(--border)',
                         borderRadius: '0.9rem',
                         cursor: 'pointer',
                         transition: 'transform 0.15s ease, background 0.15s ease, box-shadow 0.15s ease',
                         gap: '0.75rem',
                         boxSizing: 'border-box',
-                        boxShadow: '0 2px 8px rgba(37, 99, 235, 0.06)',
                       }}
                       onMouseEnter={e => {
-                        e.currentTarget.style.background = '#eff6ff'
+                        e.currentTarget.style.background = 'var(--gold-subtle)'
                         e.currentTarget.style.transform = 'translateY(-1px)'
-                        e.currentTarget.style.boxShadow = '0 4px 12px rgba(37, 99, 235, 0.12)'
+                        e.currentTarget.style.borderColor = 'var(--gold-border)'
                       }}
                       onMouseLeave={e => {
-                        e.currentTarget.style.background = '#ffffff'
+                        e.currentTarget.style.background = 'var(--bg-lifted)'
                         e.currentTarget.style.transform = 'none'
-                        e.currentTarget.style.boxShadow = '0 2px 8px rgba(37, 99, 235, 0.06)'
+                        e.currentTarget.style.borderColor = 'var(--border)'
                       }}
                     >
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem', minWidth: 0 }}>
@@ -389,25 +388,26 @@ function VolumeGrid({ volumes, onSelectIssue }) {
                           width: '2rem',
                           height: '2rem',
                           borderRadius: '50%',
-                          background: '#2563eb',
+                          background: 'var(--primary)',
                           color: '#ffffff',
                           flexShrink: 0,
                           display: 'inline-flex',
                           alignItems: 'center',
                           justifyContent: 'center',
-                          boxShadow: '0 2px 6px rgba(37, 99, 235, 0.3)',
+                          boxShadow: '0 2px 6px rgba(29, 78, 216, 0.25)',
                         }}>
                           {issKey}
                         </span>
-                        <span style={{ fontSize: '1rem', fontWeight: 700, color: '#0f172a' }}>
+                        <span style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)' }}>
                           Issue {issKey}
                         </span>
                       </div>
                       <span style={{
                         fontSize: '0.82rem',
                         fontWeight: 700,
-                        color: '#1e40af',
-                        background: '#e0f2fe',
+                        color: 'var(--text-primary)',
+                        background: 'var(--gold-subtle)',
+                        border: '1px solid var(--gold-border)',
                         padding: '0.35rem 0.85rem',
                         borderRadius: '999px',
                         whiteSpace: 'nowrap',
@@ -489,7 +489,7 @@ export default function PublishedPapers() {
   // Fetch papers when page or search changes
   useEffect(() => {
     fetchPapers(page, page > 0)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, debouncedGlobalSearch])
 
   async function fetchPapers(pageIndex = 0, append = false) {
@@ -548,26 +548,26 @@ export default function PublishedPapers() {
     <>
       {/* ── Hero banner ── */}
       <section style={{
-        background: 'linear-gradient(135deg, #0f172a 0%, #1d4ed8 60%, #1e40af 100%)',
+        background: 'linear-gradient(135deg, #1D4ED8 0%, #1e40af 60%, #0f172a 100%)',
         padding: '4.5rem 1.5rem 3.5rem',
-        color: '#fff',
+        color: '#ffffff',
         textAlign: 'center',
         position: 'relative',
         overflow: 'hidden',
       }}>
         {/* Decorative circles */}
-        <div style={{ position: 'absolute', width: '400px', height: '400px', borderRadius: '50%', background: 'rgba(255,255,255,0.04)', top: '-120px', right: '-80px', pointerEvents: 'none' }} />
-        <div style={{ position: 'absolute', width: '250px', height: '250px', borderRadius: '50%', background: 'rgba(255,255,255,0.03)', bottom: '-80px', left: '-60px', pointerEvents: 'none' }} />
+        <div style={{ position: 'absolute', width: '400px', height: '400px', borderRadius: '50%', background: 'rgba(255,255,255,0.06)', top: '-120px', right: '-80px', pointerEvents: 'none' }} />
+        <div style={{ position: 'absolute', width: '250px', height: '250px', borderRadius: '50%', background: 'rgba(255,255,255,0.04)', bottom: '-80px', left: '-60px', pointerEvents: 'none' }} />
 
         <AnimatedSection direction="up">
           <div style={{ position: 'relative', zIndex: 1 }}>
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(255,255,255,0.12)', padding: '0.35rem 1rem', borderRadius: '999px', marginBottom: '1.25rem' }}>
-              <span style={{ fontSize: '0.75rem', fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase' }}>Publication Archive</span>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(255,255,255,0.18)', padding: '0.35rem 1rem', borderRadius: '999px', marginBottom: '1.25rem' }}>
+              <span style={{ fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#ffffff' }}>Publication Archive</span>
             </div>
-            <h1 style={{ fontSize: 'clamp(1.8rem, 4.5vw, 3rem)', fontWeight: 800, marginBottom: '0.85rem', lineHeight: 1.15 }}>
+            <h1 style={{ fontSize: 'clamp(1.8rem, 4.5vw, 3rem)', fontWeight: 800, marginBottom: '0.85rem', lineHeight: 1.15, color: '#ffffff' }}>
               Research Publications
             </h1>
-            <p style={{ fontSize: '1.05rem', opacity: 0.82, maxWidth: '560px', margin: '0 auto', lineHeight: 1.75 }}>
+            <p style={{ fontSize: '1.05rem', color: 'rgba(255,255,255,0.9)', maxWidth: '560px', margin: '0 auto', lineHeight: 1.75 }}>
               Peer-reviewed research spanning science, society, and the intersection of human knowledge.
             </p>
           </div>

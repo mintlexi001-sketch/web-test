@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { LogIn, UserPlus, LayoutDashboard, LogOut, Bell } from 'lucide-react'
+import { LogIn, UserPlus, LayoutDashboard, LogOut, Bell, Sun, Moon } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
+import { useTheme } from '../context/ThemeContext'
 import ElegantMenuIcon from './ui/ElegantMenuIcon'
 import SlideMenu from './ui/FullscreenMenu'
 import { supabase } from '../lib/supabase'
@@ -21,6 +22,7 @@ export function Navbar() {
   const navigate = useNavigate()
   const [menuOpen, setMenuOpen] = useState(false)
   const { user, profile, loading, signOut } = useAuth()
+  const { theme, toggleTheme } = useTheme()
   const [unreadCount, setUnreadCount] = useState(0)
 
   useEffect(() => {
@@ -148,8 +150,8 @@ export function Navbar() {
             })}
           </nav>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <div className="navbar-actions">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+            <div className="navbar-actions" style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
               {loading ? (
                 <div style={{ width: '80px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <div className="spinner-sm" />
@@ -180,23 +182,38 @@ export function Navbar() {
                   </button>
                 </div>
               ) : (
-                <>
-                  <Link to="/login" className="btn btn-sidebar btn-sm">
-                    <LogIn size={16} /> Login
+                <div className="auth-pill">
+                  <Link to="/login" className="auth-pill-login">
+                    <LogIn size={14} /> Login
                   </Link>
-                  <Link to="/register" className="btn btn-sidebar-solid btn-sm">
-                    <UserPlus size={16} /> Register
+                  <Link to="/register" className="auth-pill-register">
+                    <UserPlus size={14} /> Register
                   </Link>
-                </>
+                </div>
               )}
+
+              {/* Theme Toggle Icon Button */}
+              <button
+                onClick={toggleTheme}
+                className="theme-toggle-btn"
+                title={theme === 'dark' ? "Switch to Light Mode" : "Switch to Dark Mode"}
+                aria-label="Toggle theme"
+              >
+                {theme === 'dark' ? <Sun size={17} /> : <Moon size={17} />}
+              </button>
             </div>
 
             {/* Mobile Actions */}
             <div className="navbar-menu-btn" style={{ alignItems: 'center', gap: '0.5rem' }}>
               {!loading && !user && (
-                <Link to="/login" className="btn btn-sidebar-solid btn-sm" style={{ padding: '0.4rem 0.75rem' }}>
-                  Sign In
-                </Link>
+                <div className="auth-pill">
+                  <Link to="/login" className="auth-pill-login" style={{ padding: '0.35rem 0.65rem', fontSize: '0.78rem' }}>
+                    Login
+                  </Link>
+                  <Link to="/register" className="auth-pill-register" style={{ padding: '0.35rem 0.75rem', fontSize: '0.78rem' }}>
+                    Register
+                  </Link>
+                </div>
               )}
               {!loading && user && (
                 <>
@@ -217,6 +234,14 @@ export function Navbar() {
                   </Link>
                 </>
               )}
+              <button
+                onClick={toggleTheme}
+                className="theme-toggle-btn"
+                title={theme === 'dark' ? "Switch to Light Mode" : "Switch to Dark Mode"}
+                aria-label="Toggle theme"
+              >
+                {theme === 'dark' ? <Sun size={17} /> : <Moon size={17} />}
+              </button>
               <button
                 className="btn btn-primary btn-icon"
                 style={{ zIndex: 9999, position: 'relative' }}

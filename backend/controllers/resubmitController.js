@@ -47,7 +47,9 @@ exports.resubmitJournal = async (req, res) => {
 
     if (title.length > 255) return res.status(400).json({ error: 'Title is too long (max 255 characters)' });
     if (abstract.length > 5000) return res.status(400).json({ error: 'Abstract is too long (max 5000 characters)' });
-    if (keywords && keywords.length > 500) return res.status(400).json({ error: 'Keywords are too long (max 500 characters)' });
+    // M-3: Require non-empty keywords — the column is NOT NULL and an empty string produces a broken keyword badge on the UI.
+    if (!keywords || !keywords.trim()) return res.status(400).json({ error: 'Keywords are required' });
+    if (keywords.length > 500) return res.status(400).json({ error: 'Keywords are too long (max 500 characters)' });
 
     // 1. Verify the caller actually owns this journal
     const { data: journal, error: fetchErr } = await supabase

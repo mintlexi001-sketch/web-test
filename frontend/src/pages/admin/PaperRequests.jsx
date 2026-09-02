@@ -92,25 +92,34 @@ export default function PaperRequests() {
     <div className="space-y-6">
       <div className="page-header-row">
         <div>
-          <h1 className="page-title">Full Paper Requests</h1>
-          <p className="page-subtitle">Visitors requesting full PDFs of published papers</p>
+          <h1 className="page-title" style={{ fontSize: '1.8rem', fontWeight: 700, color: 'var(--foreground)' }}>Full Paper Requests</h1>
+          <p className="page-subtitle" style={{ fontSize: '0.95rem', color: 'var(--text-muted)' }}>Visitors requesting full PDFs of published papers</p>
         </div>
-        <button className="btn btn-outline btn-sm" onClick={fetchRequests} disabled={loading}>
+        <button className="btn btn-outline btn-sm" onClick={fetchRequests} disabled={loading} style={{ background: 'var(--card)', color: 'var(--foreground)', border: '1px solid var(--border)' }}>
           <RefreshCw size={14} className={loading ? 'spin' : ''} /> Refresh
         </button>
       </div>
 
       {/* Filter Tabs */}
-      <div style={{ display: 'flex', gap: '0.5rem' }}>
-        {['pending', 'approved', 'rejected', 'all'].map(f => (
+      <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+        {['all', 'pending', 'approved', 'rejected'].map(f => (
           <button key={f} onClick={() => setFilter(f)}
-            className={`btn btn-sm ${filter === f ? 'btn-primary' : 'btn-outline'}`}>
-            {f.charAt(0).toUpperCase() + f.slice(1)}
-            {f !== 'all' && (
-              <span style={{ marginLeft: '0.35rem', opacity: 0.75 }}>
-                ({requests.filter(r => r.status === f).length})
-              </span>
-            )}
+            className={`btn btn-sm ${filter === f ? 'btn-primary' : 'btn-outline'}`}
+            style={{
+              padding: '0.4rem 0.85rem',
+              fontWeight: 600,
+              fontSize: '0.85rem',
+              borderRadius: 'var(--radius-md)',
+              background: filter === f ? 'var(--primary)' : 'var(--card)',
+              color: filter === f ? '#ffffff' : 'var(--foreground)',
+              border: filter === f ? '1px solid var(--primary)' : '1px solid var(--border)',
+              cursor: 'pointer'
+            }}
+          >
+            {f === 'all' ? 'All Requests' : f.charAt(0).toUpperCase() + f.slice(1)}
+            <span style={{ marginLeft: '0.4rem', opacity: filter === f ? 0.9 : 0.7, fontWeight: 700 }}>
+              ({f === 'all' ? requests.length : requests.filter(r => r.status === f).length})
+            </span>
           </button>
         ))}
       </div>

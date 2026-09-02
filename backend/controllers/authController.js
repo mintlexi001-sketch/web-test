@@ -57,6 +57,22 @@ exports.sendRegisterOTP = async (req, res) => {
   // Admin accounts are created exclusively via promotion in the Admin Panel — not via public registration
   if (!['student', 'reviewer'].includes(role)) return res.status(400).json({ error: 'Invalid role' });
 
+  // M-2: Reject registration OTP if email already belongs to an existing account.
+  // Without this check, an unauthenticated caller could upsert into custom_otps keyed by
+  // an existing user's email and silently invalidate their in-flight password-reset OTP.
+  // Use a fake-delay response to remain account-enumeration-safe.
+  const { data: existingProfile } = await supabase
+    .from('profiles')
+    .select('id')
+    .eq('email', email)
+    .single();
+
+  if (existingProfile) {
+    // Account-enumeration-safe: same delay as a real OTP send, then a generic error
+    await new Promise(r => setTimeout(r, 300 + Math.random() * 200));
+    return res.status(400).json({ error: 'If this email is not registered, an OTP will be sent.' });
+  }
+
   // Check 60-second cooldown to prevent spamming OTP requests
   const { data: existingOtp } = await supabase
     .from('custom_otps')

@@ -64,7 +64,7 @@ export function IntroAnimation({ onComplete }) {
               width: isMobile ? '70vw' : '55vw',
               height: isMobile ? '70vw' : '55vw',
               borderRadius: '50%',
-              background: 'radial-gradient(circle, rgba(29,78,216,0.045) 0%, transparent 65%)',
+              background: 'radial-gradient(circle, rgba(201,168,76,0.08) 0%, transparent 65%)',
               pointerEvents: 'none',
             }}
           />
@@ -154,7 +154,7 @@ export function IntroAnimation({ onComplete }) {
               transition={{ duration: 0.5, delay: 1.5, ease: [0.34, 1.56, 0.64, 1] }}
               style={{
                 width: 5, height: 5,
-                backgroundColor: '#1D4ED8',
+                backgroundColor: '#c9a84c',
                 transform: 'rotate(45deg)',
                 marginBottom: isMobile ? 14 : 20,
               }}

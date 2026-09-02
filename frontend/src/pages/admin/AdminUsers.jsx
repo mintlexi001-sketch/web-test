@@ -212,7 +212,7 @@ export default function AdminUsers() {
   const filtered = users.filter(u => {
     const matchSearch = u.name.toLowerCase().includes(search.toLowerCase()) ||
                         (u.email ?? '').toLowerCase().includes(search.toLowerCase())
-    const matchRole = u.role === roleFilter
+    const matchRole = roleFilter === 'all' || u.role === roleFilter
     return matchSearch && matchRole
   })
 
@@ -388,10 +388,21 @@ export default function AdminUsers() {
           <input className="input input-icon-left" style={{ paddingLeft: '2.5rem' }}
             placeholder="Search by name or email…" value={search} onChange={e => setSearch(e.target.value)} />
         </div>
-        <div style={{ display: 'flex', gap: '0.5rem' }}>
-          {['student', 'reviewer', 'admin'].map(r => (
-            <button key={r} onClick={() => setRoleFilter(r)} className={`btn btn-sm ${roleFilter === r ? 'btn-primary' : 'btn-outline'}`} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              {r === 'student' ? 'Author' : r.charAt(0).toUpperCase() + r.slice(1)}
+        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+          {['all', 'student', 'reviewer', 'admin'].map(r => (
+            <button key={r} onClick={() => setRoleFilter(r)}
+              className={`btn btn-sm ${roleFilter === r ? 'btn-primary' : 'btn-outline'}`}
+              style={{
+                display: 'flex', alignItems: 'center', gap: '0.5rem',
+                padding: '0.4rem 0.85rem', fontWeight: 600, fontSize: '0.85rem',
+                borderRadius: 'var(--radius-md)',
+                background: roleFilter === r ? 'var(--primary)' : 'var(--card)',
+                color: roleFilter === r ? '#ffffff' : 'var(--foreground)',
+                border: roleFilter === r ? '1px solid var(--primary)' : '1px solid var(--border)',
+                cursor: 'pointer'
+              }}
+            >
+              {r === 'all' ? 'All Users' : r === 'student' ? 'Authors' : r.charAt(0).toUpperCase() + r.slice(1) + 's'}
               {r === 'reviewer' && pendingCount > 0 && (
                 <span style={{
                   background: roleFilter === 'reviewer' ? '#fff' : '#f59e0b',
