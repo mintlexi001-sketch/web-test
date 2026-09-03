@@ -938,8 +938,15 @@ label {
   opacity: 1;
 }
 
+.navbar-right-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-shrink: 0;
+}
+
 .navbar-actions {
-  display: none;
+  display: flex;
   align-items: center;
   gap: 0.65rem;
   flex-shrink: 0;
@@ -953,11 +960,8 @@ label {
 @media (min-width: 1280px) {
   .navbar-links {
     display: flex;
-    gap: 0.75rem;
-  }
-
-  .navbar-actions {
-    display: flex;
+    align-items: center;
+    gap: 0.85rem;
   }
 
   .navbar-menu-btn {
@@ -965,7 +969,25 @@ label {
   }
 }
 
-/* Mobile Menu */
+/* Mobile Menu & Drawer Panel */
+.drawer-nav-link {
+  color: var(--text-primary) !important;
+}
+
+.drawer-nav-link:hover {
+  background: var(--bg-lifted) !important;
+  color: var(--primary) !important;
+}
+
+.dark .drawer-nav-link {
+  color: #EDF2F7 !important;
+}
+
+.dark .drawer-nav-link:hover {
+  background: rgba(255, 255, 255, 0.08) !important;
+  color: #818CF8 !important;
+}
+
 .mobile-menu-overlay {
   position: fixed;
   inset: 0;

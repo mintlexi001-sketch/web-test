@@ -4,15 +4,10 @@ import { createContext, useContext, useEffect, useState } from 'react'
 const ThemeContext = createContext(null)
 
 export function ThemeProvider({ children }) {
-  // Always default to 'light' whenever the site is opened
-  const [theme, setTheme] = useState('light')
-
-  useEffect(() => {
-    // Clear any legacy stored dark preference so site always opens in light theme
-    if (localStorage.getItem('theme')) {
-      localStorage.removeItem('theme')
-    }
-  }, [])
+  // Default to 'light' for new visitors, while preserving user's chosen theme across reloads
+  const [theme, setTheme] = useState(() => {
+    return localStorage.getItem('theme') || 'light'
+  })
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme)
@@ -23,6 +18,7 @@ export function ThemeProvider({ children }) {
       document.documentElement.classList.add('light')
       document.documentElement.classList.remove('dark')
     }
+    localStorage.setItem('theme', theme)
   }, [theme])
 
   const toggleTheme = () => setTheme(prev => (prev === 'dark' ? 'light' : 'dark'))

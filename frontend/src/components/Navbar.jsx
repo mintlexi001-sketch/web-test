@@ -150,60 +150,58 @@ export function Navbar() {
             })}
           </nav>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-            <div className="navbar-actions">
-              {loading ? (
-                <div style={{ width: '80px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <div className="spinner-sm" />
-                </div>
-              ) : user ? (
-                <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-                  <Link 
-                    to="/notifications" 
-                    className="btn btn-sidebar btn-sm"
-                    style={{ position: 'relative', padding: '0.4rem 0.6rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                  >
-                    <Bell size={18} />
-                    {unreadCount > 0 && (
-                      <span style={{ position: 'absolute', top: '-4px', right: '-4px', backgroundColor: '#ef4444', color: 'white', fontSize: '10px', fontWeight: 'bold', padding: '2px 6px', borderRadius: '9999px', minWidth: '18px', textAlign: 'center', boxShadow: '0 1px 2px rgba(0,0,0,0.1)' }}>
-                        {unreadCount > 99 ? '99+' : unreadCount}
-                      </span>
-                    )}
-                  </Link>
-                  <Link to={dashboardPath} className="btn btn-sidebar-solid btn-sm">
-                    <LayoutDashboard size={16} /> Dashboard
-                  </Link>
-                  <button
-                    onClick={async () => { await signOut(); navigate('/'); }}
-                    className="btn btn-sidebar btn-sm"
-                    style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}
-                  >
-                    <LogOut size={16} /> Logout
-                  </button>
-                </div>
-              ) : (
-                <div className="auth-pill">
-                  <Link to="/login" className="auth-pill-login">
-                    <LogIn size={14} /> Login
-                  </Link>
-                  <Link to="/register" className="auth-pill-register">
-                    <UserPlus size={14} /> Register
-                  </Link>
-                </div>
-              )}
+          <div className="navbar-right-actions">
+            {loading ? (
+              <div style={{ width: '80px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <div className="spinner-sm" />
+              </div>
+            ) : user ? (
+              <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center' }}>
+                <Link 
+                  to="/notifications" 
+                  className="btn btn-sidebar btn-sm"
+                  style={{ position: 'relative', padding: '0.4rem 0.6rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                >
+                  <Bell size={18} />
+                  {unreadCount > 0 && (
+                    <span style={{ position: 'absolute', top: '-4px', right: '-4px', backgroundColor: '#ef4444', color: 'white', fontSize: '10px', fontWeight: 'bold', padding: '2px 6px', borderRadius: '9999px', minWidth: '18px', textAlign: 'center', boxShadow: '0 1px 2px rgba(0,0,0,0.1)' }}>
+                      {unreadCount > 99 ? '99+' : unreadCount}
+                    </span>
+                  )}
+                </Link>
+                <Link to={dashboardPath} className="btn btn-sidebar-solid btn-sm">
+                  <LayoutDashboard size={16} /> Dashboard
+                </Link>
+                <button
+                  onClick={async () => { await signOut(); navigate('/'); }}
+                  className="btn btn-sidebar btn-sm"
+                  style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}
+                >
+                  <LogOut size={16} /> Logout
+                </button>
+              </div>
+            ) : (
+              <div className="auth-pill">
+                <Link to="/login" className="auth-pill-login">
+                  <LogIn size={14} /> Login
+                </Link>
+                <Link to="/register" className="auth-pill-register">
+                  <UserPlus size={14} /> Register
+                </Link>
+              </div>
+            )}
 
-              {/* Theme Toggle Icon Button */}
-              <button
-                onClick={toggleTheme}
-                className="theme-toggle-btn"
-                title={theme === 'dark' ? "Switch to Light Mode" : "Switch to Dark Mode"}
-                aria-label="Toggle theme"
-              >
-                {theme === 'dark' ? <Sun size={17} /> : <Moon size={17} />}
-              </button>
-            </div>
+            {/* EXACTLY ONE Theme Toggle Icon Button */}
+            <button
+              onClick={toggleTheme}
+              className="theme-toggle-btn"
+              title={theme === 'dark' ? "Switch to Light Mode" : "Switch to Dark Mode"}
+              aria-label="Toggle theme"
+            >
+              {theme === 'dark' ? <Sun size={17} /> : <Moon size={17} />}
+            </button>
 
-            {/* Mobile Actions Button */}
+            {/* Mobile/Tablet Menu Button (Visible on screens < 1280px, hidden on desktop ≥ 1280px) */}
             <div className="navbar-menu-btn">
               <button
                 className="btn btn-primary btn-icon"

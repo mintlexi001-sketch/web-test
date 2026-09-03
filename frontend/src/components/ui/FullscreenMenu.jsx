@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { Home, BookOpen, Users, LayoutList, Info, Workflow, Mail, LogIn, UserPlus, LayoutDashboard, LogOut, X } from 'lucide-react';
+import { Home, BookOpen, Users, LayoutList, Info, Workflow, Mail, LogIn, UserPlus, LayoutDashboard, LogOut, X, Sun, Moon } from 'lucide-react';
+import { useTheme } from '../../context/ThemeContext';
 
 const navItems = [
   { href: '/', label: 'Home', icon: Home },
@@ -47,6 +48,8 @@ const backdropVariants = {
 };
 
 export default function SlideMenu({ isOpen, setMenuOpen, user, signOut, navigate, dashboardPath }) {
+  const { theme, toggleTheme } = useTheme();
+
   return (
     <AnimatePresence>
       {isOpen && (
@@ -59,9 +62,9 @@ export default function SlideMenu({ isOpen, setMenuOpen, user, signOut, navigate
             onClick={() => setMenuOpen(false)}
             style={{
               position: 'fixed', inset: 0, zIndex: 9990,
-              background: 'rgba(10, 14, 30, 0.18)',
-              backdropFilter: 'blur(3px)',
-              WebkitBackdropFilter: 'blur(3px)',
+              background: 'rgba(10, 14, 30, 0.45)',
+              backdropFilter: 'blur(4px)',
+              WebkitBackdropFilter: 'blur(4px)',
             }}
           />
 
@@ -75,13 +78,14 @@ export default function SlideMenu({ isOpen, setMenuOpen, user, signOut, navigate
               top: 0, right: 0, bottom: 0,
               width: '320px',
               zIndex: 9995,
-              background: 'rgba(255, 255, 255, 0.92)',
-              backdropFilter: 'blur(22px)',
-              WebkitBackdropFilter: 'blur(22px)',
+              background: 'var(--card)',
+              color: 'var(--text-primary)',
+              backdropFilter: 'blur(24px)',
+              WebkitBackdropFilter: 'blur(24px)',
               borderLeft: '1px solid var(--border)',
               display: 'flex',
               flexDirection: 'column',
-              boxShadow: '-8px 0 40px rgba(0,0,0,0.08)',
+              boxShadow: '-8px 0 40px rgba(0,0,0,0.25)',
               overflow: 'hidden',
             }}
           >
@@ -104,15 +108,26 @@ export default function SlideMenu({ isOpen, setMenuOpen, user, signOut, navigate
                   Science & Society
                 </span>
               </div>
-              <motion.button
-                whileTap={{ scale: 0.88 }} whileHover={{ rotate: 90 }}
-                transition={{ duration: 0.18 }}
-                onClick={() => setMenuOpen(false)}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', padding: '4px' }}
-                aria-label="Close menu"
-              >
-                <X size={18} />
-              </motion.button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                <button
+                  onClick={toggleTheme}
+                  className="theme-toggle-btn"
+                  title={theme === 'dark' ? "Switch to Light Mode" : "Switch to Dark Mode"}
+                  aria-label="Toggle theme"
+                  style={{ width: '32px', height: '32px' }}
+                >
+                  {theme === 'dark' ? <Sun size={15} /> : <Moon size={15} />}
+                </button>
+                <motion.button
+                  whileTap={{ scale: 0.88 }} whileHover={{ rotate: 90 }}
+                  transition={{ duration: 0.18 }}
+                  onClick={() => setMenuOpen(false)}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-primary)', display: 'flex', padding: '4px' }}
+                  aria-label="Close menu"
+                >
+                  <X size={18} />
+                </motion.button>
+              </div>
             </div>
 
             {/* Divider */}
@@ -174,11 +189,12 @@ export default function SlideMenu({ isOpen, setMenuOpen, user, signOut, navigate
                         display: 'flex', alignItems: 'center', gap: '0.75rem',
                         padding: '0.65rem 0.8rem', borderRadius: '0.6rem',
                         background: 'none', border: 'none', cursor: 'pointer',
-                         fontSize: '0.92rem', fontWeight: 500,
+                        color: 'var(--text-primary)',
+                        fontSize: '0.92rem', fontWeight: 500,
                         width: '100%', textAlign: 'left',
                       }}
                     >
-                      <LogOut size={16} />
+                      <LogOut size={16} style={{ color: 'var(--text-muted)' }} />
                       Logout
                     </button>
                   </motion.div>
