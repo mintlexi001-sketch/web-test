@@ -1,30 +1,90 @@
-import { useEffect, useState } from 'react'
-import { Search, ChevronDown, ChevronUp } from 'lucide-react'
+import { useEffect, useState, useMemo } from 'react'
+import {
+  Search, ChevronDown, ChevronUp, RefreshCw, Users, FileText,
+  AlertCircle, CheckCircle, RotateCcw, UserCheck, BookOpen,
+  Zap, UserMinus, Calendar, User
+} from 'lucide-react'
 import { useToast } from '../../components/Toast'
 import { supabase } from '../../lib/supabase'
 import ConfirmModal from '../../components/ConfirmModal'
 import { sendNotification } from '../../lib/api'
 
+// ── Workload colour helpers ────────────────────────────────────────────────
+function workloadColor(count) {
+  if (count === 0) return { bg: '#d1fae5', text: '#065f46', dot: '#10b981', label: 'Free' }
+  if (count <= 3) return { bg: '#fef9c3', text: '#713f12', dot: '#eab308', label: 'Moderate' }
+  return { bg: '#fee2e2', text: '#7f1d1d', dot: '#ef4444', label: 'Heavy' }
+}
+
+function WorkloadBadge({ count, showLabel = false }) {
+  const c = workloadColor(count)
+  return (
+    <span style={{
+      display: 'inline-flex', alignItems: 'center', gap: '0.35rem',
+      background: c.bg, color: c.text,
+      fontSize: '0.73rem', fontWeight: 700,
+      padding: '0.2rem 0.6rem', borderRadius: '9999px',
+    }}>
+      <span style={{ width: 7, height: 7, borderRadius: '50%', background: c.dot, flexShrink: 0 }} />
+      {count} {count === 1 ? 'paper assigned' : 'papers assigned'} {showLabel && `(${c.label})`}
+    </span>
+  )
+}
+
+// ── Filter Tab ─────────────────────────────────────────────────────────────
+function FilterTab({ label, count, active, color, onClick }) {
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        display: 'inline-flex', alignItems: 'center', gap: '0.4rem',
+        padding: '0.35rem 0.85rem',
+        borderRadius: '9999px',
+        border: active ? `2px solid ${color}` : '1px solid var(--border)',
+        background: active ? color : 'var(--card)',
+        color: active ? '#fff' : 'var(--foreground)',
+        fontSize: '0.78rem', fontWeight: 600,
+        cursor: 'pointer', transition: 'all 0.15s ease',
+        whiteSpace: 'nowrap',
+      }}
+    >
+      {label}
+      <span style={{
+        background: active ? 'rgba(255,255,255,0.25)' : 'var(--muted)',
+        color: active ? '#fff' : 'var(--muted-foreground)',
+        fontSize: '0.68rem', fontWeight: 700,
+        padding: '0.05rem 0.38rem', borderRadius: '9999px',
+      }}>{count}</span>
+    </button>
+  )
+}
+
 export default function AssignReviewers() {
   const toast = useToast()
-  const [journals, setJournals] = useState([])
-  const [reviewers, setReviewers] = useState([])
-  const [assignments, setAssignments] = useState({})   // { journalId: [{ id, reviewer_id, profiles: { name } }] }
-  const [selected, setSelected] = useState(null)
-  const [search, setSearch] = useState('')
-  const [loading, setLoading] = useState(true)
+  const [journals, setJournals]             = useState([])
+  const [allJournals, setAllJournals]       = useState([])
+  const [reviewers, setReviewers]           = useState([])
+  const [assignments, setAssignments]       = useState({})   // { journalId: [{ id, reviewer_id, profiles }] }
+  const [selected, setSelected]             = useState(null)
+  const [search, setSearch]                 = useState('')
+  const [filter, setFilter]                 = useState('unassigned')
+  const [loading, setLoading]               = useState(true)
+  const [viewMode, setViewMode]             = useState('papers') // 'papers' | 'reviewers'
 
-  // Confirmation Modal state
-  const [confirmOpen, setConfirmOpen] = useState(false)
-  const [confirmData, setConfirmData] = useState(null)
+  // Inline selection per paper card: { [journalId]: reviewerId }
+  const [inlineSelectedReviewers, setInlineSelectedReviewers] = useState({})
+
+  // Confirmation modal for unassigning
+  const [confirmOpen, setConfirmOpen]       = useState(false)
+  const [confirmData, setConfirmData]       = useState(null)
   const [confirmLoading, setConfirmLoading] = useState(false)
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- fetchAll is stable and intentionally mount-only
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { fetchAll() }, [])
-
 
   async function fetchAll() {
     setLoading(true)
+    setSelected(null)
     const [journalsRes, reviewersRes, assignmentsRes] = await Promise.all([
       supabase
         .from('journals')
@@ -38,7 +98,7 @@ export default function AssignReviewers() {
         .select('id, name, role, status')
         .eq('role', 'reviewer')
         .eq('status', 'active')
-        .limit(200),  // Only admin-approved reviewers
+        .limit(200),
       supabase
         .from('assignments')
         .select('id, journal_id, reviewer_id, profiles(name)')
@@ -49,10 +109,11 @@ export default function AssignReviewers() {
     if (reviewersRes.error) toast.error('Failed to load reviewers')
     if (assignmentsRes.error) toast.error('Failed to load assignments')
 
-    setJournals(journalsRes.data ?? [])
+    const jData = journalsRes.data ?? []
+    setJournals(jData)
+    setAllJournals(jData)
     setReviewers(reviewersRes.data ?? [])
 
-    // Group assignments by journal_id
     const grouped = {}
     for (const a of assignmentsRes.data ?? []) {
       if (!grouped[a.journal_id]) grouped[a.journal_id] = []
@@ -65,22 +126,20 @@ export default function AssignReviewers() {
   async function assignReviewer(journalId, reviewer) {
     const current = assignments[journalId] ?? []
     if (current.some(a => a.reviewer_id === reviewer.id)) {
-      toast.error(`${reviewer.name} is already assigned`)
-      return
+      toast.error(`${reviewer.name} is already assigned to this paper`)
+      return false
     }
     if (current.length >= 1) {
-      toast.error('Only 1 reviewer allowed per journal')
-      return
+      toast.error('Only 1 reviewer allowed per paper. Unassign the existing one first.')
+      return false
     }
 
     const { error } = await supabase.rpc('assign_reviewer_to_journal', {
       p_journal_id: journalId,
       p_reviewer_id: reviewer.id
     })
+    if (error) { toast.error(error.message || 'Failed to assign reviewer'); return false }
 
-    if (error) { toast.error(error.message || 'Failed to assign reviewer'); return }
-
-    // Fetch the newly created assignment to get its ID for the UI
     const { data } = await supabase
       .from('assignments')
       .select('id, journal_id, reviewer_id, profiles(name)')
@@ -89,326 +148,572 @@ export default function AssignReviewers() {
       .single()
 
     if (data) {
-      setAssignments(prev => ({
-        ...prev,
-        [journalId]: [...(prev[journalId] ?? []), data],
-      }))
+      setAssignments(prev => ({ ...prev, [journalId]: [...(prev[journalId] ?? []), data] }))
     }
 
-    // Update journal status to under_review locally
-    const journal = journals.find(j => j.id === journalId)
+    const journal = allJournals.find(j => j.id === journalId)
     if (journal) {
-      setJournals(prev => prev.filter(j => j.id !== journalId))
+      setJournals(prev => prev.map(j => j.id === journalId ? { ...j, _justAssigned: true } : j))
       if (selected === journalId) setSelected(null)
 
-      let emailFailed = false;
-      // Notify reviewer
-      const revRes = await sendNotification('/api/notify/assign', { reviewerId: reviewer.id, reviewerName: reviewer.name, journalTitle: journal.title, isRework: (journal.resubmission_count ?? 0) > 0 })
-      if (!revRes || !revRes.ok) emailFailed = true;
-      
-      // Notify student that their paper has been sent for review
+      let emailFailed = false
+      const revRes = await sendNotification('/api/notify/assign', {
+        reviewerId: reviewer.id,
+        reviewerName: reviewer.name,
+        journalTitle: journal.title,
+        isRework: (journal.resubmission_count ?? 0) > 0
+      })
+      if (!revRes || !revRes.ok) emailFailed = true
+
       if (journal.student_id) {
-        const stuRes = await sendNotification('/api/notify/sent-for-review', { studentId: journal.student_id, studentName: journal.profiles?.name || 'Author', journalTitle: journal.title })
-        if (!stuRes || !stuRes.ok) emailFailed = true;
+        const stuRes = await sendNotification('/api/notify/sent-for-review', {
+          studentId: journal.student_id,
+          studentName: journal.profiles?.name || 'Author',
+          journalTitle: journal.title
+        })
+        if (!stuRes || !stuRes.ok) emailFailed = true
       }
 
       if (emailFailed) {
-        toast.error(`Assignment completed, but failed to send email notifications.`, { duration: 5000 });
+        toast.error('Assigned! But email notification failed.', { duration: 5000 })
       } else {
-        toast.success(`${reviewer.name} assigned successfully!`)
+        toast.success(`${reviewer.name} assigned to "${journal.title.slice(0, 35)}${journal.title.length > 35 ? '…' : ''}"`)
       }
     } else {
       toast.success(`${reviewer.name} assigned successfully!`)
     }
+    return true
   }
 
-  async function removeReviewer(journalId, assignmentId, reviewerName) {
+  async function removeReviewer(journalId, assignmentId, reviewerName, reviewerId, journalTitle) {
     const { error } = await supabase.rpc('unassign_reviewer_from_journal', {
       p_journal_id: journalId,
       p_assignment_id: assignmentId
     })
-    
-    if (error) { toast.error('Failed to remove reviewer'); return }
+    if (error) { toast.error('Failed to unassign reviewer: ' + error.message); return }
+
+    let emailFailed = false
+    if (reviewerId) {
+      const res = await sendNotification('/api/notify/unassign-reviewer', {
+        reviewerId,
+        reviewerName: reviewerName || 'Reviewer',
+        journalTitle: journalTitle || 'Manuscript'
+      })
+      if (!res || !res.ok) emailFailed = true
+    }
 
     const remaining = (assignments[journalId] ?? []).filter(a => a.id !== assignmentId)
-    setAssignments(prev => ({
-      ...prev,
-      [journalId]: remaining,
-    }))
+    setAssignments(prev => ({ ...prev, [journalId]: remaining }))
 
-    toast.success(`${reviewerName} removed`)
+    if (emailFailed) {
+      toast.error('Unassigned reviewer, but email notification failed.', { duration: 5000 })
+    } else {
+      toast.success(`Unassigned ${reviewerName || 'Reviewer'} & notified by email.`)
+    }
   }
 
-  function triggerRemove(journalId, assignmentId, reviewerName) {
-    setConfirmData({ journalId, assignmentId, reviewerName })
+  function triggerRemove(journalId, assignmentId, reviewerName, journalTitle, reviewerId) {
+    setConfirmData({ journalId, assignmentId, reviewerName, journalTitle, reviewerId })
     setConfirmOpen(true)
   }
 
   async function handleConfirmRemove() {
     if (!confirmData) return
     setConfirmLoading(true)
-    await removeReviewer(confirmData.journalId, confirmData.assignmentId, confirmData.reviewerName)
+    await removeReviewer(
+      confirmData.journalId,
+      confirmData.assignmentId,
+      confirmData.reviewerName,
+      confirmData.reviewerId,
+      confirmData.journalTitle
+    )
     setConfirmLoading(false)
     setConfirmOpen(false)
     setConfirmData(null)
   }
 
-  const filteredJournals = journals.filter(j =>
-    j.title.toLowerCase().includes(search.toLowerCase()) ||
-    (j.profiles?.name ?? '').toLowerCase().includes(search.toLowerCase())
-  )
+  // ── Workload per reviewer ────────────────────────────────────────────────
+  const reviewerWorkloads = useMemo(() => {
+    const counts = {}
+    const papers  = {}
+    for (const reviewer of reviewers) { counts[reviewer.id] = 0; papers[reviewer.id] = [] }
+    for (const [jid, assignList] of Object.entries(assignments)) {
+      const journal = allJournals.find(j => j.id === jid)
+      for (const a of assignList) {
+        if (counts[a.reviewer_id] !== undefined) {
+          counts[a.reviewer_id]++
+          papers[a.reviewer_id].push({ journalId: jid, title: journal?.title ?? 'Unknown', assignmentId: a.id, reviewerName: a.profiles?.name, author: journal?.profiles?.name })
+        }
+      }
+    }
+    return { counts, papers }
+  }, [reviewers, assignments, allJournals])
 
+  // ── Categorised journals ────────────────────────────────────────────────
+  const categorised = useMemo(() => ({
+    unassigned: journals.filter(j => (assignments[j.id] ?? []).length === 0 && (j.resubmission_count ?? 0) === 0),
+    reworks:    journals.filter(j => (j.resubmission_count ?? 0) > 0),
+    assigned:   journals.filter(j => (assignments[j.id] ?? []).length > 0),
+    all:        journals,
+  }), [journals, assignments])
+
+  const filteredJournals = useMemo(() => {
+    const base = filter === 'all' ? journals : (categorised[filter] ?? [])
+    return base.filter(j =>
+      j.title.toLowerCase().includes(search.toLowerCase()) ||
+      (j.profiles?.name ?? '').toLowerCase().includes(search.toLowerCase())
+    )
+  }, [filter, journals, categorised, search])
+
+  // Least loaded reviewer helper
+  const leastLoadedReviewer = useMemo(() => {
+    if (reviewers.length === 0) return null
+    return [...reviewers].sort((a, b) => (reviewerWorkloads.counts[a.id] ?? 0) - (reviewerWorkloads.counts[b.id] ?? 0))[0]
+  }, [reviewers, reviewerWorkloads])
+
+  // ───────────────────────────────────────────────────────────────────────
   return (
-    <div className="space-y-6">
-      <div className="page-header-row">
-        <div>
-          <h1 className="page-title">Assign Reviewers</h1>
-          <p className="page-subtitle">Assign expert reviewers to journal submissions</p>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', minHeight: '100%' }}>
+
+      {/* ── Page Header ───────────────────────────────────────────────── */}
+      <div style={{ flexShrink: 0 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+          <div>
+            <h1 className="page-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              Assign Reviewers
+            </h1>
+            <p className="page-subtitle">Assign or unassign expert reviewers for journal submissions one paper at a time</p>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+            {/* View Mode Switcher */}
+            <div style={{ display: 'inline-flex', background: 'var(--muted)', padding: '0.2rem', borderRadius: '0.5rem', border: '1px solid var(--border)' }}>
+              <button
+                onClick={() => setViewMode('papers')}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: '0.35rem',
+                  padding: '0.35rem 0.85rem', borderRadius: '0.375rem', fontSize: '0.8rem', fontWeight: 600,
+                  border: 'none', cursor: 'pointer', transition: 'all 0.15s ease',
+                  background: viewMode === 'papers' ? 'var(--card)' : 'transparent',
+                  color: viewMode === 'papers' ? 'var(--foreground)' : 'var(--muted-foreground)',
+                  boxShadow: viewMode === 'papers' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                }}
+              >
+                <FileText size={14} />
+                By Papers ({journals.length})
+              </button>
+              <button
+                onClick={() => setViewMode('reviewers')}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: '0.35rem',
+                  padding: '0.35rem 0.85rem', borderRadius: '0.375rem', fontSize: '0.8rem', fontWeight: 600,
+                  border: 'none', cursor: 'pointer', transition: 'all 0.15s ease',
+                  background: viewMode === 'reviewers' ? 'var(--card)' : 'transparent',
+                  color: viewMode === 'reviewers' ? 'var(--foreground)' : 'var(--muted-foreground)',
+                  boxShadow: viewMode === 'reviewers' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                }}
+              >
+                <Users size={14} />
+                By Reviewers ({reviewers.length})
+              </button>
+            </div>
+
+            <button
+              className="btn btn-outline btn-sm"
+              onClick={fetchAll}
+              disabled={loading}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', flexShrink: 0 }}
+            >
+              <RefreshCw size={13} className={loading ? 'spin' : ''} />
+              Refresh
+            </button>
+          </div>
         </div>
-        <button className="btn btn-outline btn-sm" onClick={fetchAll} disabled={loading}>
-          Refresh
-        </button>
+
+        {/* Stats Summary Bar */}
+        {!loading && (
+          <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', marginTop: '0.85rem' }}>
+            {[
+              { icon: AlertCircle, label: 'Needs Reviewer', value: categorised.unassigned.length, color: '#dc2626' },
+              { icon: RotateCcw,   label: 'Reworks',         value: categorised.reworks.length,    color: '#7c3aed' },
+              { icon: CheckCircle, label: 'Assigned',         value: categorised.assigned.length,   color: '#16a34a' },
+              { icon: Users,       label: 'Active Reviewers', value: reviewers.length,              color: '#2563eb' },
+            ].map(({ icon: Icon, label, value, color }) => (
+              <div key={label} style={{
+                display: 'flex', alignItems: 'center', gap: '0.55rem',
+                background: 'var(--card)', border: '1px solid var(--border)',
+                borderRadius: '0.625rem', padding: '0.5rem 0.9rem',
+                flex: '1 1 140px',
+              }}>
+                <span style={{ background: color + '18', borderRadius: '0.4rem', padding: '0.35rem', display: 'flex' }}>
+                  <Icon size={15} style={{ color }} />
+                </span>
+                <div>
+                  <p style={{ fontSize: '1.05rem', fontWeight: 800, margin: 0, color: 'var(--foreground)' }}>{value}</p>
+                  <p style={{ fontSize: '0.68rem', color: 'var(--muted-foreground)', margin: 0, fontWeight: 500 }}>{label}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
+      {/* Loading state */}
       {loading ? (
-        <p className="text-muted text-sm">Loading…</p>
-      ) : (
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1.5rem' }}>
-          {/* Left: Journal list */}
-          <div style={{ flex: '2', minWidth: '280px' }}>
-            <div style={{ position: 'relative', marginBottom: '1rem' }}>
-              <Search size={16} style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--muted-foreground)' }} />
-              <input className="input input-icon-left" style={{ paddingLeft: '2.5rem' }}
-                placeholder="Search journals…" value={search} onChange={e => setSearch(e.target.value)} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', color: 'var(--muted-foreground)', padding: '3rem 0', justifyContent: 'center' }}>
+          <RefreshCw size={18} className="spin" />
+          Loading manuscripts and reviewer workloads…
+        </div>
+      ) : viewMode === 'papers' ? (
+        /* ── VIEW MODE 1: PAPERS VIEW (Clean paper list with one-by-one inline assign) ── */
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+
+          {/* Search + Filter Tabs */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem', background: 'var(--card)', padding: '0.9rem 1rem', borderRadius: '0.75rem', border: '1px solid var(--border)' }}>
+            <div style={{ position: 'relative' }}>
+              <Search size={14} style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--muted-foreground)' }} />
+              <input
+                className="input"
+                style={{ paddingLeft: '2.25rem', width: '100%' }}
+                placeholder="Search by manuscript title or author name…"
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+              />
             </div>
 
-            <div className="space-y-4">
-              {filteredJournals.length === 0 && (
-                <p className="text-sm text-muted">No pending journals found.</p>
-              )}
-              {filteredJournals.map(j => {
-                const assigned = assignments[j.id] ?? []
-                const isSelected = selected === j.id
-                const isUnassigned = assigned.length === 0
+            <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
+              <FilterTab label="Unassigned" count={categorised.unassigned.length} active={filter === 'unassigned'} color="#dc2626" onClick={() => setFilter('unassigned')} />
+              <FilterTab label="Reworks"    count={categorised.reworks.length}    active={filter === 'reworks'}    color="#7c3aed" onClick={() => setFilter('reworks')} />
+              <FilterTab label="Assigned"   count={categorised.assigned.length}   active={filter === 'assigned'}   color="#16a34a" onClick={() => setFilter('assigned')} />
+              <FilterTab label="All Manuscripts" count={categorised.all.length}   active={filter === 'all'}        color="#2563eb" onClick={() => setFilter('all')} />
+            </div>
+          </div>
 
-                const cardStyle = {
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease',
-                  borderWidth: (isSelected || isUnassigned) ? '2px' : '1px',
-                  borderColor: isSelected ? 'var(--primary)' : (isUnassigned ? '#dc2626' : undefined),
-                  background: isUnassigned ? '#fef2f2' : undefined,
-                  boxShadow: isUnassigned ? '0 0 0 1px #dc2626' : undefined,
-                }
+          {/* Journal Cards List */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            {filteredJournals.length === 0 && (
+              <div style={{ textAlign: 'center', padding: '3rem 1rem', color: 'var(--muted-foreground)', background: 'var(--card)', borderRadius: '0.75rem', border: '1px dashed var(--border)' }}>
+                <FileText size={30} style={{ marginBottom: '0.5rem', opacity: 0.4 }} />
+                <p style={{ fontWeight: 600, fontSize: '0.9rem', margin: '0 0 0.25rem 0' }}>No manuscripts found</p>
+                <p style={{ fontSize: '0.8rem', margin: 0 }}>Try adjusting your search query or switching active filters.</p>
+              </div>
+            )}
 
-                const isReworked = (j.resubmission_count ?? 0) > 0;
+            {filteredJournals.map(j => {
+              const assigned      = assignments[j.id] ?? []
+              const isSelected    = selected === j.id
+              const isUnassigned   = assigned.length === 0
+              const isReworked    = (j.resubmission_count ?? 0) > 0
 
-                // Override card style for rework papers
-                if (isReworked && !isSelected) {
-                  cardStyle.borderColor = '#7c3aed'
-                  cardStyle.borderWidth = '2px'
-                  cardStyle.background = '#faf5ff'
-                  cardStyle.boxShadow = '0 0 0 1px #c4b5fd'
-                }
-                if (isSelected && isReworked) {
-                  cardStyle.background = '#f5f3ff'
-                }
+              const prevReviewerObj = j.prev_reviewer_name
+                ? reviewers.find(r => r.name.trim().toLowerCase() === j.prev_reviewer_name.trim().toLowerCase())
+                : null
 
-                return (
-                  <div key={j.id}
-                    className="card"
-                    style={cardStyle}
-                    onClick={() => setSelected(isSelected ? null : j.id)}
-                  >
-                    <div className="card-content" style={{ paddingTop: '1.25rem' }}>
-                      {/* ── Card Header ── */}
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-                            <p className="font-medium text-sm" style={{ margin: 0 }}>{j.title}</p>
-                            {isReworked && (
-                              <span style={{
-                                background: '#ede9fe', color: '#6d28d9',
-                                border: '1px solid #ddd6fe', borderRadius: '9999px',
-                                padding: '0.1rem 0.5rem', fontSize: '0.65rem', fontWeight: 700
-                              }}>
-                                Reworked Paper (Revision #{j.resubmission_count})
-                              </span>
-                            )}
-                          </div>
-                          <p className="text-xs text-muted" style={{ marginTop: '0.2rem' }}>by {j.profiles?.name ?? '—'} &middot; {new Date(j.created_at).toLocaleDateString()}</p>
-                          {isReworked && j.prev_reviewer_comments && (
-                            <p className="text-xs" style={{ marginTop: '0.35rem', color: '#6d28d9', fontStyle: 'italic', lineHeight: 1.4, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
-                              “{j.prev_reviewer_comments.slice(0, 120)}{j.prev_reviewer_comments.length > 120 ? '…' : ''}”
-                            </p>
-                          )}
-                        </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
-                          {isSelected && (
-                            <span style={{ fontSize: '0.7rem', color: 'var(--primary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Selected</span>
-                          )}
-                          {isSelected ? <ChevronUp size={16} style={{ color: 'var(--muted-foreground)' }} /> : <ChevronDown size={16} style={{ color: 'var(--muted-foreground)' }} />}
-                        </div>
-                      </div>
+              let borderColor = 'var(--border)'
+              let bgColor = 'var(--card)'
+              let shadow = 'none'
 
-                      {/* ── Assignment Badges ── */}
-                      {assigned.length > 0 && (
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                          {assigned.map(a => (
-                            <span key={a.id} className="badge badge-secondary" style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                              {a.profiles?.name ?? '—'}
-                              <button
-                                style={{ marginLeft: '0.25rem', background: 'none', border: 'none', cursor: 'pointer', lineHeight: 1, color: 'var(--muted-foreground)' }}
-                                onClick={(e) => { e.stopPropagation(); triggerRemove(j.id, a.id, a.profiles?.name) }}
-                                title={`Remove ${a.profiles?.name}`}
-                              >×</button>
+              if (isSelected) { borderColor = 'var(--primary)'; shadow = `0 0 0 3px var(--primary)22` }
+              else if (isReworked && isUnassigned) { borderColor = '#7c3aed66'; bgColor = '#faf5ff' }
+              else if (isUnassigned) { borderColor = '#dc262644' }
+
+              return (
+                <div
+                  key={j.id}
+                  className="card"
+                  style={{
+                    borderColor, background: bgColor, boxShadow: shadow,
+                    borderWidth: (isSelected || isReworked) ? '2px' : '1px',
+                    transition: 'all 0.18s ease',
+                  }}
+                >
+                  <div className="card-content" style={{ padding: '1rem 1.15rem' }}>
+                    {/* Top Row: Title + Metadata + Status Badges */}
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
+                      <div style={{ flex: 1, minWidth: 0, cursor: 'pointer' }} onClick={() => setSelected(isSelected ? null : j.id)}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.25rem' }}>
+                          <h3 style={{ fontWeight: 600, fontSize: '0.92rem', margin: 0, color: 'var(--foreground)', lineHeight: 1.35 }}>
+                            {j.title}
+                          </h3>
+                          {isReworked && (
+                            <span style={{ background: '#ede9fe', color: '#6d28d9', border: '1px solid #ddd6fe', borderRadius: '9999px', padding: '0.12rem 0.5rem', fontSize: '0.65rem', fontWeight: 700, whiteSpace: 'nowrap' }}>
+                              Revision #{j.resubmission_count}
                             </span>
-                          ))}
+                          )}
+                          {isUnassigned && !isReworked && (
+                            <span style={{ background: '#fee2e2', color: '#b91c1c', borderRadius: '9999px', padding: '0.12rem 0.5rem', fontSize: '0.65rem', fontWeight: 700, whiteSpace: 'nowrap' }}>
+                              Needs Reviewer
+                            </span>
+                          )}
+                          {!isUnassigned && (
+                            <span style={{ background: '#d1fae5', color: '#065f46', borderRadius: '9999px', padding: '0.12rem 0.5rem', fontSize: '0.65rem', fontWeight: 700, whiteSpace: 'nowrap' }}>
+                              Assigned ✓
+                            </span>
+                          )}
                         </div>
-                      )}
-                      {assigned.length === 0 && <p className="text-xs text-muted">No reviewers assigned yet</p>}
 
-                      {/* ── Expandable Detail Panel (shows when selected) ── */}
-                      {isSelected && (
-                        <div
-                          onClick={e => e.stopPropagation()}
-                          style={{
-                            marginTop: '1rem',
-                            paddingTop: '1rem',
-                            borderTop: '1px solid var(--border)',
-                            display: 'flex', flexDirection: 'column', gap: '0.875rem'
-                          }}
-                        >
-                          {/* Abstract */}
-                          <div>
-                            <p style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--muted-foreground)', marginBottom: '0.4rem' }}>Abstract</p>
-                            {j.abstract?.startsWith('http') ? (
-                              <a href={j.abstract} target="_blank" rel="noreferrer" className="btn btn-outline btn-sm" style={{ display: 'inline-flex', gap: '0.35rem' }}>
-                                Download Abstract PDF
-                              </a>
-                            ) : (
-                              <p style={{ fontSize: '0.8375rem', lineHeight: 1.65, color: 'var(--foreground)', whiteSpace: 'pre-wrap', maxHeight: '160px', overflowY: 'auto' }}>{j.abstract || '—'}</p>
-                            )}
+                        <p style={{ fontSize: '0.75rem', color: 'var(--muted-foreground)', margin: 0 }}>
+                          by <strong style={{ color: 'var(--foreground)', fontWeight: 600 }}>{j.profiles?.name ?? '—'}</strong> · Submitted on {new Date(j.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                        </p>
+                      </div>
+
+                      <button
+                        onClick={() => setSelected(isSelected ? null : j.id)}
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0.25rem', color: 'var(--muted-foreground)' }}
+                        title={isSelected ? 'Hide manuscript details' : 'View manuscript abstract & details'}
+                      >
+                        {isSelected ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+                      </button>
+                    </div>
+
+                    {/* Assigned Reviewer Bar with CLEAR UNASSIGN BUTTON or Inline Assign Bar */}
+                    <div style={{ marginTop: '0.75rem' }}>
+                      {assigned.length > 0 ? (
+                        <div style={{ background: 'var(--muted)35', padding: '0.65rem 0.85rem', borderRadius: '0.5rem', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                          {assigned.map(a => {
+                            const revWorkload = reviewerWorkloads.counts[a.reviewer_id] ?? 1
+                            return (
+                              <div key={a.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                                  <UserCheck size={16} style={{ color: '#16a34a', flexShrink: 0 }} />
+                                  <span style={{ fontSize: '0.83rem', color: 'var(--foreground)' }}>
+                                    Assigned Reviewer: <strong style={{ color: 'var(--foreground)', fontWeight: 700 }}>{a.profiles?.name ?? '—'}</strong>
+                                    <span style={{ fontSize: '0.72rem', color: 'var(--muted-foreground)', marginLeft: '0.35rem' }}>
+                                      ({revWorkload} {revWorkload === 1 ? 'paper total' : 'papers total'})
+                                    </span>
+                                  </span>
+                                </div>
+
+                                <button
+                                  onClick={() => triggerRemove(j.id, a.id, a.profiles?.name, j.title, a.reviewer_id)}
+                                  className="btn btn-outline btn-sm"
+                                  style={{ color: '#dc2626', borderColor: '#fca5a5', fontSize: '0.75rem', padding: '0.3rem 0.75rem', display: 'inline-flex', alignItems: 'center', gap: '0.35rem', fontWeight: 600 }}
+                                  title={`Unassign ${a.profiles?.name} from "${j.title}"`}
+                                >
+                                  <UserMinus size={14} />
+                                  Unassign Reviewer
+                                </button>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      ) : (
+                        /* ── INLINE DIRECT ONE-BY-ONE ASSIGNMENT BAR ── */
+                        <div style={{ background: 'var(--muted)35', padding: '0.6rem 0.75rem', borderRadius: '0.5rem', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                            <select
+                              className="input"
+                              style={{ flex: '1 1 240px', fontSize: '0.8rem', padding: '0.35rem 0.65rem', height: 'auto', background: 'var(--card)' }}
+                              value={inlineSelectedReviewers[j.id] || ''}
+                              onChange={e => setInlineSelectedReviewers(prev => ({ ...prev, [j.id]: e.target.value }))}
+                            >
+                              <option value="">Select Reviewer for this paper…</option>
+                              {reviewers.map(r => {
+                                const count = reviewerWorkloads.counts[r.id] ?? 0
+                                const isPrev = j.prev_reviewer_name === r.name
+                                return (
+                                  <option key={r.id} value={r.id}>
+                                    {r.name} — {count} {count === 1 ? 'paper assigned' : 'papers assigned'} {isPrev ? '(Previous Reviewer)' : ''}
+                                  </option>
+                                )
+                              })}
+                            </select>
+
+                            <button
+                              className="btn btn-primary btn-sm"
+                              disabled={!inlineSelectedReviewers[j.id]}
+                              onClick={async () => {
+                                const revId = inlineSelectedReviewers[j.id]
+                                const reviewer = reviewers.find(r => r.id === revId)
+                                if (reviewer) {
+                                  const ok = await assignReviewer(j.id, reviewer)
+                                  if (ok) setInlineSelectedReviewers(prev => ({ ...prev, [j.id]: '' }))
+                                }
+                              }}
+                              style={{ fontSize: '0.78rem', padding: '0.35rem 0.85rem', whiteSpace: 'nowrap' }}
+                            >
+                              Assign Reviewer
+                            </button>
                           </div>
 
-                          {/* Keywords */}
-                          {j.keywords && (
-                            <div>
-                              <p style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--muted-foreground)', marginBottom: '0.4rem' }}>Keywords</p>
-                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem' }}>
-                                {j.keywords.split(',').map(k => k.trim()).filter(Boolean).map(k => (
-                                  <span key={k} className="badge badge-secondary" style={{ fontSize: '0.7rem' }}>{k}</span>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-
-                          {/* Full Manuscript Download */}
-                          {j.file_url && (
-                            <div>
-                              <p style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--muted-foreground)', marginBottom: '0.4rem' }}>Full Manuscript</p>
+                          {/* 1-Click Smart Action Buttons */}
+                          <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                            {isReworked && prevReviewerObj && (
                               <button
-                                onClick={async () => {
-                                  const { getSignedUrl } = await import('../../lib/storage')
-                                  const url = await getSignedUrl(supabase, j.file_url)
-                                  if (url) window.open(url, '_blank', 'noreferrer')
+                                onClick={() => assignReviewer(j.id, prevReviewerObj)}
+                                style={{
+                                  display: 'inline-flex', alignItems: 'center', gap: '0.3rem',
+                                  background: '#ede9fe', color: '#6d28d9', border: '1px solid #ddd6fe',
+                                  borderRadius: '0.375rem', padding: '0.2rem 0.55rem', fontSize: '0.7rem', fontWeight: 700,
+                                  cursor: 'pointer', transition: 'all 0.15s ease',
                                 }}
-                                className="btn btn-primary btn-sm"
-                                style={{ display: 'inline-flex', gap: '0.4rem' }}
+                                title={`Instantly assign previous reviewer ${prevReviewerObj.name}`}
                               >
-                                Open Full Paper PDF
+                                <Zap size={12} />
+                                Re-assign {prevReviewerObj.name} ({reviewerWorkloads.counts[prevReviewerObj.id] ?? 0} active)
                               </button>
-                            </div>
-                          )}
+                            )}
 
-                          {/* Previous round details for rework papers */}
-                          {isReworked && (j.prev_admin_comments || j.prev_reviewer_comments) && (
-                            <div style={{ background: '#faf5ff', border: '1px solid #e9d5ff', borderRadius: '0.5rem', padding: '0.75rem' }}>
-                              <p style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: '#7c3aed', marginBottom: '0.6rem' }}>Previous Round Feedback</p>
-                              {j.prev_admin_comments && (
-                                <div style={{ marginBottom: '0.5rem' }}>
-                                  <p style={{ fontSize: '0.7rem', color: '#6d28d9', fontWeight: 600, marginBottom: '0.2rem' }}>Editor's Comments</p>
-                                  <p style={{ fontSize: '0.8rem', color: '#4c1d95', lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>{j.prev_admin_comments}</p>
-                                </div>
-                              )}
-                              {j.prev_reviewer_comments && (
-                                <div>
-                                  <p style={{ fontSize: '0.7rem', color: '#6d28d9', fontWeight: 600, marginBottom: '0.2rem' }}>Reviewer's Comments</p>
-                                  <p style={{ fontSize: '0.8rem', color: '#4c1d95', lineHeight: 1.5, whiteSpace: 'pre-wrap', maxHeight: '120px', overflowY: 'auto' }}>{j.prev_reviewer_comments}</p>
-                                </div>
-                              )}
-                            </div>
-                          )}
+                            {leastLoadedReviewer && (
+                              <button
+                                onClick={() => assignReviewer(j.id, leastLoadedReviewer)}
+                                style={{
+                                  display: 'inline-flex', alignItems: 'center', gap: '0.3rem',
+                                  background: '#d1fae5', color: '#065f46', border: '1px solid #a7f3d0',
+                                  borderRadius: '0.375rem', padding: '0.2rem 0.55rem', fontSize: '0.7rem', fontWeight: 700,
+                                  cursor: 'pointer', transition: 'all 0.15s ease',
+                                }}
+                                title={`Auto-assign to ${leastLoadedReviewer.name} (Lowest workload: ${reviewerWorkloads.counts[leastLoadedReviewer.id] ?? 0} papers assigned)`}
+                              >
+                                <Zap size={12} />
+                                Assign Least Loaded ({leastLoadedReviewer.name.split(' ')[0]} — {reviewerWorkloads.counts[leastLoadedReviewer.id] ?? 0} assigned)
+                              </button>
+                            )}
+                          </div>
                         </div>
                       )}
                     </div>
-                  </div>
-                )
-              })}
-            </div>
-          </div>
 
-          {/* Right: Reviewer panel */}
-          <div style={{ flex: '1', minWidth: '240px' }}>
-            <div className="card" style={{ position: 'sticky', top: '1.5rem' }}>
-              <div className="card-header">
-                <div className="card-title">Available Reviewers</div>
-                <div className="card-description">
-                  {selected ? 'Click to assign to selected journal' : 'Select a journal first'}
-                </div>
-                <div style={{ fontSize: '0.75rem', color: 'var(--primary)', marginTop: '0.25rem', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--primary)', display: 'inline-block' }} />
-                  Approved reviewers only
-                </div>
-              </div>
-              <div className="card-content space-y-4">
-                {reviewers.length === 0 && (
-                  <div style={{ textAlign: 'center', padding: '1rem 0', color: 'var(--muted-foreground)' }}>
-                    <p className="text-sm">No approved reviewers yet.</p>
-                    <p className="text-xs" style={{ marginTop: '0.25rem' }}>Go to <strong>Manage Users</strong> to approve pending reviewers.</p>
-                  </div>
-                )}
-                {reviewers.map(r => {
-                  const selectedJournal = selected ? journals.find(j => j.id === selected) : null
-                  const alreadyAssigned = selected && (assignments[selected] ?? []).some(a => a.reviewer_id === r.id)
-                  const isFull = selected && (assignments[selected] ?? []).length >= 1
-                  const isPrevReviewer = selectedJournal && selectedJournal.prev_reviewer_name && selectedJournal.prev_reviewer_name === r.name
-
-                  return (
-                    <div key={r.id} style={{ 
-                      border: isPrevReviewer ? '2px solid #7c3aed' : '1px solid var(--border)', 
-                      background: isPrevReviewer ? '#faf5ff' : 'transparent',
-                      borderRadius: 'var(--radius)', 
-                      padding: '0.875rem' 
-                    }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    {/* Expandable Manuscript Detail Panel */}
+                    {isSelected && (
+                      <div
+                        onClick={e => e.stopPropagation()}
+                        style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: '0.85rem' }}
+                      >
                         <div>
-                          <p className="font-medium text-sm" style={{ color: isPrevReviewer ? '#6d28d9' : 'inherit' }}>{r.name}</p>
-                          {isPrevReviewer && <span style={{ display: 'inline-block', marginTop: '0.25rem', fontSize: '0.65rem', background: '#ede9fe', color: '#6d28d9', padding: '0.1rem 0.4rem', borderRadius: '4px', fontWeight: 600 }}>Previous Reviewer</span>}
+                          <p style={{ fontSize: '0.68rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--muted-foreground)', marginBottom: '0.35rem' }}>Abstract</p>
+                          {j.abstract?.startsWith('http') ? (
+                            <a href={j.abstract} target="_blank" rel="noreferrer" className="btn btn-outline btn-sm">Download Abstract PDF</a>
+                          ) : (
+                            <p style={{ fontSize: '0.82rem', lineHeight: 1.65, color: 'var(--foreground)', whiteSpace: 'pre-wrap', maxHeight: '160px', overflowY: 'auto', margin: 0 }}>{j.abstract || 'No abstract provided.'}</p>
+                          )}
                         </div>
-                        <button
-                          className={`btn btn-sm ${alreadyAssigned ? 'btn-outline' : 'btn-primary'}`}
-                          disabled={!selected || alreadyAssigned || (!alreadyAssigned && isFull)}
-                          onClick={() => selected && assignReviewer(selected, r)}
-                        >
-                          {alreadyAssigned ? 'Assigned' : 'Assign'}
-                        </button>
+
+                        {j.keywords && (
+                          <div>
+                            <p style={{ fontSize: '0.68rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--muted-foreground)', marginBottom: '0.35rem' }}>Keywords</p>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem' }}>
+                              {j.keywords.split(',').map(k => k.trim()).filter(Boolean).map(k => (
+                                <span key={k} className="badge badge-secondary" style={{ fontSize: '0.7rem' }}>{k}</span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {j.file_url && (
+                          <div>
+                            <p style={{ fontSize: '0.68rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--muted-foreground)', marginBottom: '0.35rem' }}>Full Manuscript</p>
+                            <button
+                              onClick={async () => {
+                                const { getSignedUrl } = await import('../../lib/storage')
+                                const url = await getSignedUrl(supabase, j.file_url)
+                                if (url) window.open(url, '_blank', 'noreferrer')
+                              }}
+                              className="btn btn-primary btn-sm"
+                              style={{ display: 'inline-flex', gap: '0.4rem' }}
+                            >
+                              Open Full Manuscript PDF
+                            </button>
+                          </div>
+                        )}
+
+                        {isReworked && (j.prev_admin_comments || j.prev_reviewer_comments) && (
+                          <div style={{ background: '#faf5ff', border: '1px solid #e9d5ff', borderRadius: '0.625rem', padding: '0.85rem' }}>
+                            <p style={{ fontSize: '0.68rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: '#7c3aed', marginBottom: '0.5rem' }}>Previous Round Feedback</p>
+                            {j.prev_admin_comments && (
+                              <div style={{ marginBottom: '0.5rem' }}>
+                                <p style={{ fontSize: '0.7rem', color: '#6d28d9', fontWeight: 700, marginBottom: '0.15rem' }}>Editor's Comments</p>
+                                <p style={{ fontSize: '0.8rem', color: '#4c1d95', lineHeight: 1.5, whiteSpace: 'pre-wrap', margin: 0 }}>{j.prev_admin_comments}</p>
+                              </div>
+                            )}
+                            {j.prev_reviewer_comments && (
+                              <div>
+                                <p style={{ fontSize: '0.7rem', color: '#6d28d9', fontWeight: 700, marginBottom: '0.15rem' }}>Reviewer's Comments</p>
+                                <p style={{ fontSize: '0.8rem', color: '#4c1d95', lineHeight: 1.5, whiteSpace: 'pre-wrap', maxHeight: '120px', overflowY: 'auto', margin: 0 }}>{j.prev_reviewer_comments}</p>
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
+                    )}
+                  </div>
+                </div>
+              )
+            })}
           </div>
+        </div>
+      ) : (
+        /* ── VIEW MODE 2: REVIEWERS VIEW (Reviewer Directory & Active Workload Dashboard) ── */
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1.15rem' }}>
+          {reviewers.map(r => {
+            const workload = reviewerWorkloads.counts[r.id] ?? 0
+            const activeJournals = reviewerWorkloads.papers[r.id] ?? []
+
+            return (
+              <div
+                key={r.id}
+                className="card"
+                style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}
+              >
+                <div className="card-content" style={{ padding: '1.15rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.5rem', marginBottom: '0.75rem' }}>
+                    <div>
+                      <h3 style={{ fontSize: '1rem', fontWeight: 700, margin: '0 0 0.2rem 0', color: 'var(--foreground)' }}>{r.name}</h3>
+                      <span className="badge badge-secondary" style={{ fontSize: '0.7rem' }}>Active Reviewer</span>
+                    </div>
+
+                    <div style={{ textAlign: 'right' }}>
+                      <WorkloadBadge count={workload} showLabel={true} />
+                    </div>
+                  </div>
+
+                  {/* Active Papers List with UNASSIGN BUTTON per paper */}
+                  <div style={{ marginTop: '0.85rem' }}>
+                    <p style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--muted-foreground)', marginBottom: '0.45rem' }}>
+                      Currently Assigned Manuscripts ({activeJournals.length})
+                    </p>
+
+                    {activeJournals.length === 0 ? (
+                      <p style={{ fontSize: '0.8rem', color: 'var(--muted-foreground)', fontStyle: 'italic', margin: 0, padding: '0.5rem 0' }}>
+                        No active manuscripts currently assigned to this reviewer.
+                      </p>
+                    ) : (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem', maxHeight: '240px', overflowY: 'auto' }}>
+                        {activeJournals.map(ap => (
+                          <div key={ap.journalId} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem', background: 'var(--muted)55', padding: '0.5rem 0.65rem', borderRadius: '0.4rem', border: '1px solid var(--border)' }}>
+                            <div style={{ minWidth: 0, flex: 1 }}>
+                              <p style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--foreground)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ap.title}</p>
+                              <p style={{ fontSize: '0.68rem', color: 'var(--muted-foreground)', margin: 0 }}>Author: {ap.author ?? '—'}</p>
+                            </div>
+                            <button
+                              onClick={() => triggerRemove(ap.journalId, ap.assignmentId, r.name, ap.title)}
+                              className="btn btn-outline btn-sm"
+                              style={{ padding: '0.2rem 0.55rem', fontSize: '0.7rem', color: '#dc2626', borderColor: '#fca5a5', display: 'inline-flex', alignItems: 'center', gap: '0.25rem', fontWeight: 600, flexShrink: 0 }}
+                              title={`Unassign ${r.name} from "${ap.title}"`}
+                            >
+                              <UserMinus size={12} />
+                              Unassign
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )
+          })}
         </div>
       )}
 
+      {/* Confirmation Modal for Unassigning */}
       <ConfirmModal
         isOpen={confirmOpen}
         onClose={() => setConfirmOpen(false)}
         onConfirm={handleConfirmRemove}
-        title="Remove Reviewer?"
-        message={`Are you sure you want to remove ${confirmData?.reviewerName ?? 'the reviewer'} from this journal?`}
-        confirmText="Remove"
+        title="Unassign Reviewer?"
+        message={`Are you sure you want to unassign ${confirmData?.reviewerName ?? 'the reviewer'} from "${confirmData?.journalTitle ?? 'this paper'}"?`}
+        confirmText="Unassign Reviewer"
         loading={confirmLoading}
         type="danger"
       />

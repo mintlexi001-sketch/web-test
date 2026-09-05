@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Search, Trash2, RefreshCw, CheckCircle2, XCircle, Clock, ShieldCheck, ShieldOff, ShieldAlert, UserCog } from 'lucide-react'
+import { Search, Trash2, RefreshCw, CheckCircle2, XCircle, Clock, ShieldCheck, ShieldOff, ShieldAlert, UserCog, Settings, ChevronDown, MoreVertical, UserCheck } from 'lucide-react'
 import { useToast } from '../../components/Toast'
 import { supabase } from '../../lib/supabase'
 import ConfirmModal from '../../components/ConfirmModal'
@@ -16,6 +16,7 @@ export default function AdminUsers() {
   const [loading,       setLoading]       = useState(true)
   const [search,        setSearch]        = useState('')
   const [roleFilter,    setRoleFilter]    = useState('student')
+  const [openMenuId,    setOpenMenuId]    = useState(null)
   const [actionLoading, setActionLoading] = useState(null)
 
   // Confirmation modal state
@@ -27,9 +28,14 @@ export default function AdminUsers() {
   const isPermanentAdmin = currentUserProfile?.is_permanent === true ||
                            currentUserProfile?.email === PERMANENT_ADMIN_EMAIL
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- fetchUsers is stable and intentionally mount-only
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { fetchUsers() }, [])
 
+  useEffect(() => {
+    const handleOutsideClick = () => setOpenMenuId(null)
+    window.addEventListener('click', handleOutsideClick)
+    return () => window.removeEventListener('click', handleOutsideClick)
+  }, [])
 
   async function fetchUsers() {
     setLoading(true)
@@ -50,7 +56,6 @@ export default function AdminUsers() {
     if (error) {
       toast.error('Failed to approve user: ' + error.message)
     } else {
-      // Send approval email securely
       const res = await sendNotification('/api/notify/reviewer-approved', { userId: user.id, userName: user.name });
       if (!res || !res.ok) {
         toast.error('Reviewer approved, but failed to send email notification.', { duration: 5000 });
@@ -88,7 +93,6 @@ export default function AdminUsers() {
     if (error) {
       toast.error('Failed to ban user: ' + error.message)
     } else {
-      // Send email notification securely
       let emailFailed = false;
       const res = await sendNotification('/api/notify/ban', { userId: user.id, userName: user.name, reason: '' });
       if (!res || !res.ok) emailFailed = true;
@@ -110,7 +114,6 @@ export default function AdminUsers() {
     if (error) {
       toast.error('Failed to reinstate user: ' + error.message)
     } else {
-      // Send email notification securely
       let emailFailed = false;
       const res = await sendNotification('/api/notify/unban', { userId: user.id, userName: user.name });
       if (!res || !res.ok) emailFailed = true;
@@ -221,125 +224,189 @@ export default function AdminUsers() {
   const adminCount    = users.filter(u => u.role === 'admin').length
   const pendingCount  = users.filter(u => u.status === 'pending').length
 
-  // Determine what actions to show for a given user row
+  // ── Render Actions: Operation Selector Dropdown with Icons ─────────────────
   function renderActions(u) {
     const isMe = u.id === currentUserProfile?.id
     const isThisUserPermanent = u.is_permanent || u.email === PERMANENT_ADMIN_EMAIL
 
-    // The permanent admin row always shows "Protected" — no actions from anyone
     if (isThisUserPermanent) {
       return (
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', color: 'var(--primary)', fontWeight: 600, fontSize: '0.8rem' }}>
-          <ShieldCheck size={14} /> Protected
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', color: 'var(--primary)', fontWeight: 700, fontSize: '0.78rem' }}>
+          <ShieldCheck size={14} /> System Admin
         </span>
       )
     }
 
-    // Sub-admins (not permanent) cannot act on other admins
     if (u.role === 'admin' && !isPermanentAdmin) {
-      return <span style={{ color: 'var(--muted-foreground)', fontSize: '0.8rem' }}>—</span>
+      return <span style={{ color: 'var(--muted-foreground)', fontSize: '0.78rem' }}>Protected Admin</span>
     }
 
-    // Permanent admin can demote non-permanent admins
-    if (u.role === 'admin' && isPermanentAdmin) {
-      return (
-        <button
-          className="btn btn-sm"
-          style={{ background: '#f59e0b', color: '#fff', display: 'inline-flex', alignItems: 'center', gap: '0.3rem', opacity: actionLoading === u.id ? 0.6 : 1 }}
-          disabled={actionLoading === u.id}
-          title="Revoke admin access"
-          onClick={() => triggerDemote(u)}
-        >
-          <UserCog size={14} /> Demote
-        </button>
-      )
-    }
-
-    // The logged-in admin cannot delete themselves
     if (isMe) {
-      return <span style={{ color: 'var(--muted-foreground)', fontSize: '0.8rem' }}>—</span>
+      return <span style={{ color: 'var(--muted-foreground)', fontSize: '0.78rem' }}>Current Session</span>
     }
 
-    // Pending reviewer → Approve / Reject
+    // Pending reviewer application → Quick Approve / Reject buttons
     if (u.status === 'pending') {
       return (
-        <>
+        <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
           <button
             className="btn btn-sm"
-            style={{ background: 'var(--primary)', color: '#fff', display: 'inline-flex', alignItems: 'center', gap: '0.3rem', opacity: actionLoading === u.id ? 0.6 : 1 }}
+            style={{ background: '#16a34a', color: '#fff', display: 'inline-flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.75rem', padding: '0.25rem 0.6rem' }}
             disabled={actionLoading === u.id}
             onClick={() => approveUser(u)}
           >
-            <CheckCircle2 size={14} /> Approve
+            <CheckCircle2 size={13} /> Approve
           </button>
           <button
             className="btn btn-sm"
-            style={{ background: 'var(--destructive)', color: '#fff', display: 'inline-flex', alignItems: 'center', gap: '0.3rem', opacity: actionLoading === u.id ? 0.6 : 1 }}
+            style={{ background: '#dc2626', color: '#fff', display: 'inline-flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.75rem', padding: '0.25rem 0.6rem' }}
             disabled={actionLoading === u.id}
             onClick={() => triggerReject(u)}
           >
-            <XCircle size={14} /> Reject
+            <XCircle size={13} /> Reject
           </button>
-        </>
+        </div>
       )
     }
 
-    // Active / Inactive → Ban / Unban + Delete (+ Promote if permanent admin)
+    // Active / Inactive / Admin → Single Gear Icon Button with Horizontal Action Popover
+    const isMenuOpen = openMenuId === u.id
+
     return (
-      <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
-        {/* Promote to Admin — only permanent admin, only for active non-admin users */}
-        {isPermanentAdmin && u.status === 'active' && u.role !== 'admin' && (
-          <button
-            className="btn btn-sm"
-            style={{ background: 'var(--primary)', color: '#fff', display: 'inline-flex', alignItems: 'center', gap: '0.3rem', opacity: actionLoading === u.id ? 0.6 : 1 }}
-            disabled={actionLoading === u.id}
-            title="Promote to Admin"
-            onClick={() => triggerPromote(u)}
-          >
-            <UserCog size={14} /> Promote
-          </button>
-        )}
-        {u.status === 'active' ? (
-          <button
-            className="btn btn-primary btn-sm"
-            style={{  display: 'inline-flex', alignItems: 'center', gap: '0.3rem', opacity: actionLoading === u.id ? 0.6 : 1 }}
-            disabled={actionLoading === u.id}
-            title="Suspend account"
-            onClick={() => triggerBan(u)}
-          >
-            <ShieldOff size={14} /> Suspend
-          </button>
-        ) : (
-          <button
-            className="btn btn-primary btn-sm"
-            style={{ color: '#16a34a', display: 'inline-flex', alignItems: 'center', gap: '0.3rem', opacity: actionLoading === u.id ? 0.6 : 1 }}
-            disabled={actionLoading === u.id}
-            title="Reinstate account"
-            onClick={() => unbanUser(u)}
-          >
-            <ShieldAlert size={14} /> Reinstate
-          </button>
-        )}
+      <div style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}>
         <button
-          className="btn btn-primary btn-sm"
-          style={{  display: 'inline-flex', alignItems: 'center', gap: '0.35rem', opacity: actionLoading === u.id ? 0.6 : 1 }}
+          type="button"
+          className="btn btn-outline btn-sm"
+          style={{
+            width: '28px',
+            height: '28px',
+            padding: 0,
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            borderRadius: 'var(--radius-md)',
+            background: isMenuOpen ? 'var(--muted)' : 'var(--card)',
+            borderColor: 'var(--border)',
+            color: 'var(--foreground)',
+            cursor: 'pointer',
+          }}
           disabled={actionLoading === u.id}
-          title="Permanently delete account"
-          onClick={() => triggerDelete(u)}
+          onClick={(e) => {
+            e.stopPropagation()
+            setOpenMenuId(isMenuOpen ? null : u.id)
+          }}
+          title="Click to perform user operations"
         >
-          <Trash2 size={14} /> Delete
+          <Settings size={14} style={{ color: 'var(--muted-foreground)' }} />
         </button>
+
+        {isMenuOpen && (
+          <div
+            style={{
+              position: 'absolute',
+              right: 'calc(100% + 6px)',
+              top: '50%',
+              transform: 'translateY(-50%)',
+              zIndex: 100,
+              background: 'var(--card)',
+              border: '1px solid var(--border)',
+              borderRadius: 'var(--radius-md)',
+              boxShadow: '0 6px 20px rgba(0,0,0,0.2)',
+              padding: '0.25rem 0.4rem',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.35rem',
+              whiteSpace: 'nowrap'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {isPermanentAdmin && u.status === 'active' && u.role !== 'admin' && (
+              <button
+                type="button"
+                className="btn btn-sm"
+                style={{
+                  fontSize: '0.75rem', padding: '0.2rem 0.5rem',
+                  display: 'inline-flex', alignItems: 'center', gap: '0.3rem',
+                  background: 'rgba(37, 99, 235, 0.1)', color: '#2563eb', border: '1px solid rgba(37, 99, 235, 0.3)',
+                  borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontWeight: 600
+                }}
+                onClick={() => { setOpenMenuId(null); triggerPromote(u); }}
+              >
+                <ShieldCheck size={13} /> Promote
+              </button>
+            )}
+
+            {isPermanentAdmin && u.role === 'admin' && (
+              <button
+                type="button"
+                className="btn btn-sm"
+                style={{
+                  fontSize: '0.75rem', padding: '0.2rem 0.5rem',
+                  display: 'inline-flex', alignItems: 'center', gap: '0.3rem',
+                  background: 'rgba(217, 119, 6, 0.1)', color: '#d97706', border: '1px solid rgba(217, 119, 6, 0.3)',
+                  borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontWeight: 600
+                }}
+                onClick={() => { setOpenMenuId(null); triggerDemote(u); }}
+              >
+                <ShieldOff size={13} /> Demote
+              </button>
+            )}
+
+            {u.status === 'active' ? (
+              <button
+                type="button"
+                className="btn btn-sm"
+                style={{
+                  fontSize: '0.75rem', padding: '0.2rem 0.5rem',
+                  display: 'inline-flex', alignItems: 'center', gap: '0.3rem',
+                  background: 'rgba(217, 119, 6, 0.1)', color: '#d97706', border: '1px solid rgba(217, 119, 6, 0.3)',
+                  borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontWeight: 600
+                }}
+                onClick={() => { setOpenMenuId(null); triggerBan(u); }}
+              >
+                <ShieldAlert size={13} /> Suspend
+              </button>
+            ) : (
+              <button
+                type="button"
+                className="btn btn-sm"
+                style={{
+                  fontSize: '0.75rem', padding: '0.2rem 0.5rem',
+                  display: 'inline-flex', alignItems: 'center', gap: '0.3rem',
+                  background: 'rgba(22, 163, 74, 0.1)', color: '#16a34a', border: '1px solid rgba(22, 163, 74, 0.3)',
+                  borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontWeight: 600
+                }}
+                onClick={() => { setOpenMenuId(null); unbanUser(u); }}
+              >
+                <UserCheck size={13} /> Reinstate
+              </button>
+            )}
+
+            <button
+              type="button"
+              className="btn btn-sm"
+              style={{
+                fontSize: '0.75rem', padding: '0.2rem 0.5rem',
+                display: 'inline-flex', alignItems: 'center', gap: '0.3rem',
+                background: 'rgba(220, 38, 38, 0.1)', color: '#dc2626', border: '1px solid rgba(220, 38, 38, 0.3)',
+                borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontWeight: 600
+              }}
+              onClick={() => { setOpenMenuId(null); triggerDelete(u); }}
+            >
+              <Trash2 size={13} /> Delete
+            </button>
+          </div>
+        )}
       </div>
     )
   }
 
-  // Also add Demote button for non-permanent admin rows (visible only to permanent admin)
-  // This is handled inside renderActions above. The confirm message/title logic:
-  const confirmTitle   = confirmData?.type === 'delete'  ? 'Delete User?'
+  const confirmTitle = confirmData?.type === 'delete'  ? 'Delete User?'
     : confirmData?.type === 'reject'  ? 'Reject Application?'
     : confirmData?.type === 'promote' ? 'Promote to Admin?'
     : confirmData?.type === 'demote'  ? 'Demote Admin?'
     : 'Suspend User?'
+
   const confirmMessage = confirmData?.type === 'delete'
     ? `Are you sure you want to permanently delete ${confirmData?.user?.name}? They will receive an email notification. This cannot be undone.`
     : confirmData?.type === 'reject'
@@ -355,11 +422,11 @@ export default function AdminUsers() {
       <div className="page-header">
         <div>
           <h1 className="page-title">Manage Users</h1>
-          <p className="page-subtitle">View and manage all registered users</p>
+          <p className="page-subtitle">View and manage all registered user accounts and reviewer applications</p>
         </div>
         <div style={{ display: 'flex', gap: '0.5rem' }}>
           <button className="btn btn-outline btn-sm" onClick={fetchUsers} disabled={loading}>
-            <RefreshCw size={14} /> Refresh
+            <RefreshCw size={14} className={loading ? 'spin' : ''} /> Refresh
           </button>
         </div>
       </div>
@@ -439,8 +506,9 @@ export default function AdminUsers() {
                   <td style={{ fontWeight: 500, whiteSpace: 'nowrap' }}>{u.name}</td>
                   <td style={{ fontSize: '0.8125rem', color: 'var(--muted-foreground)' }}>{u.email ?? '—'}</td>
                   <td>
-                    <span className={`badge ${u.role === 'admin' ? 'badge-default' : u.role === 'reviewer' ? 'badge-default' : 'badge-secondary'}`}
-                      style={{ textTransform: 'capitalize' }}>{u.role}</span>
+                    <span className={`badge ${u.role === 'admin' ? 'badge-default' : u.role === 'reviewer' ? 'badge-default' : 'badge-secondary'}`}>
+                      {u.role === 'student' ? 'Author' : u.role.charAt(0).toUpperCase() + u.role.slice(1)}
+                    </span>
                   </td>
                   <td>
                     {u.status === 'pending' ? (

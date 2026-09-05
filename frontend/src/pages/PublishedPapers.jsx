@@ -266,7 +266,7 @@ function VolumeGrid({ volumes, onSelectIssue }) {
   }
 
   return (
-    <div style={{ maxWidth: '1100px', margin: '0 auto', padding: '2.5rem 1.5rem' }}>
+    <div style={{ maxWidth: '1100px', margin: '0 auto', padding: '2.5rem 1.5rem', position: 'relative', zIndex: 1 }}>
       <p style={{ fontSize: '0.875rem', color: 'var(--muted-foreground)', marginBottom: '2rem' }}>
         Select a volume and issue to browse papers
       </p>
@@ -295,6 +295,8 @@ function VolumeGrid({ volumes, onSelectIssue }) {
               display: 'flex',
               flexDirection: 'column',
               minHeight: '240px',
+              position: 'relative',
+              zIndex: 1,
             }}>
               {/* Volume header */}
               <div style={{
@@ -340,16 +342,17 @@ function VolumeGrid({ volumes, onSelectIssue }) {
                 minHeight: '140px',
               }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.2rem' }}>
-                  <p style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--gold)', textTransform: 'uppercase', letterSpacing: '0.08em', margin: 0 }}>
+                  <p style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--primary)', textTransform: 'uppercase', letterSpacing: '0.08em', margin: 0 }}>
                     Issues
                   </p>
-                  <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)' }}>
+                  <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--muted-foreground)' }}>
                     {issueKeys.length} issue{issueKeys.length !== 1 ? 's' : ''} available
                   </span>
                 </div>
 
                 {issueKeys.map((issKey) => {
                   const iss = vol.issues[issKey]
+                  const isUpcoming = issKey === 'Upcoming Papers'
                   return (
                     <div
                       key={issKey}
@@ -361,32 +364,34 @@ function VolumeGrid({ volumes, onSelectIssue }) {
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'space-between',
-                        padding: '0.9rem 1.15rem',
-                        background: 'var(--bg-lifted)',
+                        padding: '0.85rem 1.15rem',
+                        background: 'var(--muted)',
                         border: '1.5px solid var(--border)',
                         borderRadius: '0.9rem',
                         cursor: 'pointer',
-                        transition: 'transform 0.15s ease, background 0.15s ease, box-shadow 0.15s ease',
+                        transition: 'transform 0.15s ease, background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease',
                         gap: '0.75rem',
                         boxSizing: 'border-box',
                       }}
                       onMouseEnter={e => {
-                        e.currentTarget.style.background = 'var(--gold-subtle)'
-                        e.currentTarget.style.transform = 'translateY(-1px)'
-                        e.currentTarget.style.borderColor = 'var(--gold-border)'
+                        e.currentTarget.style.background = 'var(--accent)'
+                        e.currentTarget.style.borderColor = 'var(--primary)'
+                        e.currentTarget.style.transform = 'translateY(-2px)'
+                        e.currentTarget.style.boxShadow = '0 4px 12px rgba(29, 78, 216, 0.15)'
                       }}
                       onMouseLeave={e => {
-                        e.currentTarget.style.background = 'var(--bg-lifted)'
-                        e.currentTarget.style.transform = 'none'
+                        e.currentTarget.style.background = 'var(--muted)'
                         e.currentTarget.style.borderColor = 'var(--border)'
+                        e.currentTarget.style.transform = 'none'
+                        e.currentTarget.style.boxShadow = 'none'
                       }}
                     >
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem', minWidth: 0 }}>
                         <span style={{
                           fontSize: '0.85rem',
                           fontWeight: 800,
-                          width: '2rem',
-                          height: '2rem',
+                          width: '2.1rem',
+                          height: '2.1rem',
                           borderRadius: '50%',
                           background: 'var(--primary)',
                           color: '#ffffff',
@@ -396,19 +401,19 @@ function VolumeGrid({ volumes, onSelectIssue }) {
                           justifyContent: 'center',
                           boxShadow: '0 2px 6px rgba(29, 78, 216, 0.25)',
                         }}>
-                          {issKey}
+                          {isUpcoming ? '★' : issKey.replace(/\D/g, '') || '1'}
                         </span>
-                        <span style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)' }}>
-                          Issue {issKey}
+                        <span style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--foreground)' }}>
+                          {isUpcoming ? 'Articles in Press' : `Issue ${issKey}`}
                         </span>
                       </div>
                       <span style={{
-                        fontSize: '0.82rem',
+                        fontSize: '0.78rem',
                         fontWeight: 700,
-                        color: 'var(--text-primary)',
-                        background: 'var(--gold-subtle)',
-                        border: '1px solid var(--gold-border)',
-                        padding: '0.35rem 0.85rem',
+                        color: 'var(--foreground)',
+                        background: 'var(--card)',
+                        border: '1px solid var(--border)',
+                        padding: '0.3rem 0.75rem',
                         borderRadius: '999px',
                         whiteSpace: 'nowrap',
                         flexShrink: 0,

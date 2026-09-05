@@ -112,6 +112,24 @@ exports.notifyAssign = async (req, res) => {
   res.status(sent ? 200 : 500).json({ success: sent });
 };
 
+exports.notifyUnassignReviewer = async (req, res) => {
+  if (!await checkAdmin(req.user?.id)) return res.status(403).json({ error: 'Forbidden' });
+  const { reviewerId, reviewerName, journalTitle } = req.body;
+  const reviewerEmail = await getEmailForUser(reviewerId);
+  if (!reviewerEmail) return res.status(404).json({ error: 'Reviewer email not found' });
+  
+  const html = generateUnassignNotification(esc(reviewerName), esc(journalTitle));
+  const sent = await sendMail(reviewerEmail, `Review Assignment Removed: "${esc(journalTitle)}"`, html);
+  
+  await insertNotification(
+    reviewerId,
+    'Review Assignment Removed',
+    `You have been unassigned from reviewing "${journalTitle}".`,
+    '/reviewer/assigned'
+  );
+  res.status(sent ? 200 : 500).json({ success: sent });
+};
+
 exports.notifyReview = async (req, res) => {
   const { journalId, studentId, reviewerName, journalTitle, decision } = req.body;
 

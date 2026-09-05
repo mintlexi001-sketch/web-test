@@ -19,7 +19,7 @@ const rateLimit = require('express-rate-limit');
 const helmet = require('helmet');
 
 const { sendRegisterOTP, verifyRegisterOTP, sendResetOTP, verifyResetOTP, sendEmailChangeOTP, verifyEmailChangeOTP, cancelDeletion } = require('./controllers/authController');
-const { notifyUpload, notifyAssign, notifyReview, notifyDecision, notifyBan, notifyUnban, notifyAccountDeleted, notifyReviewerApproved, notifyReviewerRejected, notifySentForReview, notifyRework, notifyResubmit, notifyPublish, notifyPaperRequest, notifyPaperRequestRejected, notifyPaperDelivery, notifyPaperDeleted, notifyContact, replyContact } = require('./controllers/notifyController');
+const { notifyUpload, notifyAssign, notifyUnassignReviewer, notifyReview, notifyDecision, notifyBan, notifyUnban, notifyAccountDeleted, notifyReviewerApproved, notifyReviewerRejected, notifySentForReview, notifyRework, notifyResubmit, notifyPublish, notifyPaperRequest, notifyPaperRequestRejected, notifyPaperDelivery, notifyPaperDeleted, notifyContact, replyContact } = require('./controllers/notifyController');
 const { resubmitJournal } = require('./controllers/resubmitController');
 const { requireAuth, requireAdmin } = require('./middleware/requireAuth');
 // node-cron removed: does not work on Vercel serverless. The account deletion cron
@@ -166,6 +166,7 @@ app.use('/api/notify', requireAuth);
 
 // Admin-only notification routes
 app.post('/api/notify/assign', requireAdmin, notifyAssign);
+app.post('/api/notify/unassign-reviewer', requireAdmin, notifyUnassignReviewer);
 app.post('/api/notify/decision', requireAdmin, notifyDecision);
 app.post('/api/notify/ban', requireAdmin, notifyBan);
 app.post('/api/notify/unban', requireAdmin, notifyUnban);

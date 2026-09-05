@@ -174,16 +174,28 @@ export function DashboardSidebar({ role }) {
       {/* Mobile top bar */}
       <div className="mobile-topbar">
         <div className="mobile-topbar-brand">
-          <BookOpen size={24} />
-          <span style={{ fontWeight: 600, fontSize: '1.125rem' }}>Science and Society</span>
+          <BookOpen size={22} />
+          <span style={{ fontWeight: 600, fontSize: '1.05rem' }}>Science and Society</span>
         </div>
         <button
-          className="btn btn-primary btn-icon"
-          style={{ color: 'var(--sidebar-fg)' }}
+          className="btn btn-outline btn-sm"
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '0.4rem',
+            padding: '0.35rem 0.75rem',
+            fontSize: '0.85rem',
+            fontWeight: 600,
+            color: 'var(--foreground)',
+            background: 'var(--card)',
+            borderColor: 'var(--border)',
+            borderRadius: 'var(--radius-md)'
+          }}
           onClick={() => setMobileOpen(true)}
           aria-label="Open menu"
         >
-          <Menu size={20} />
+          <Menu size={16} />
+          <span>Menu</span>
         </button>
       </div>
 
@@ -192,15 +204,6 @@ export function DashboardSidebar({ role }) {
         <>
           <div className="sidebar-drawer-overlay" onClick={() => setMobileOpen(false)} />
           <div className="sidebar-drawer">
-            <div style={{ position: 'absolute', top: '1rem', right: '1rem', zIndex: 1 }}>
-              <button
-                className="btn btn-primary btn-icon"
-                style={{ color: 'var(--sidebar-fg)' }}
-                onClick={() => setMobileOpen(false)}
-              >
-                <X size={20} />
-              </button>
-            </div>
             <SidebarContent role={role} onClose={() => setMobileOpen(false)} />
           </div>
         </>

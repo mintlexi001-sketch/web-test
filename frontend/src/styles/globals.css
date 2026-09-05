@@ -2149,6 +2149,11 @@ label {
 }
 
 /* ── Dashboard Pages ──────────────────────────────────────────────── */
+.dashboard-layout {
+  position: relative;
+  z-index: 10;
+}
+
 .page-header {
   display: flex;
   flex-direction: column;
@@ -2167,6 +2172,7 @@ label {
 .page-title {
   font-size: 1.5rem;
   font-weight: 700;
+  color: var(--foreground);
 }
 
 .page-subtitle {
@@ -4595,4 +4601,13 @@ html {
   .navbar-inner {
     height: 3rem;
   }
+}
+
+/* ── Spin animation (used by dashboard loading icons) ────────────────────── */
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+.spin {
+  animation: spin 0.8s linear infinite;
 }

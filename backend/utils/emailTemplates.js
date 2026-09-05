@@ -174,6 +174,17 @@ exports.generateAssignNotification = (reviewerName, journalTitle, isRework) => r
   actionUrl: `${APP_URL}/reviewer/assigned`
 });
 
+exports.generateUnassignNotification = (reviewerName, journalTitle) => renderMasterTemplate({
+  title: 'Review Assignment Removed',
+  greeting: `Hello ${reviewerName}`,
+  intro: 'You have been unassigned from reviewing the following manuscript by the editorial team on Science & Society.',
+  detailsHTML: `
+    <p style="margin: 0;"><strong>Title:</strong> ${journalTitle}</p>
+  `,
+  actionText: 'Go to Dashboard',
+  actionUrl: `${APP_URL}/reviewer/assigned`
+});
+
 
 exports.generateReviewCompleteNotification = (role, journalTitle, decision, reviewerName) => renderMasterTemplate({
   title: role === 'admin' ? 'Reviewer Report Submitted' : 'Review Completed',

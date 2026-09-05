@@ -142,7 +142,9 @@ export default function AdminDashboard() {
                   <p className="text-sm font-medium">{u.name}</p>
                   <p className="text-xs text-muted">{u.email}</p>
                 </div>
-                <span className="badge badge-secondary" style={{ textTransform: 'capitalize' }}>{u.role}</span>
+                <span className="badge badge-secondary">
+                  {u.role === 'student' ? 'Author' : u.role.charAt(0).toUpperCase() + u.role.slice(1)}
+                </span>
               </div>
             ))}
             {!loading && recentUsers.length === 0 && <p className="text-sm text-muted">No users yet.</p>}
