@@ -156,17 +156,18 @@
 html {
   scroll-behavior: smooth;
   overscroll-behavior: none;
-  /* zoom: 0.85 removed — browser zoom forces a full-page re-composite on every
-     animation frame, causing massive frame drops on all devices. Use CSS transform
-     scale on a wrapper element if viewport scaling is needed. */
+  background-color: var(--background);
+  color: var(--foreground);
 }
 
 body {
   font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  background-color: var(--background);
   color: var(--foreground);
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
   overscroll-behavior: none;
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 a {
