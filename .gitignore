@@ -28,3 +28,7 @@ build/
 Thumbs.db
 
 *.exe
+
+# IDE / MCP secrets — NEVER commit these (contain API keys)
+.vscode/mcp.json
+.testsprite/
