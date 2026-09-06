@@ -32,3 +32,8 @@ Thumbs.db
 # IDE / MCP secrets — NEVER commit these (contain API keys)
 .vscode/mcp.json
 .testsprite/
+
+# TestSprite & AI agent tooling — local only, not part of the codebase
+testsprite-plans/
+.agents/
+.claude/
