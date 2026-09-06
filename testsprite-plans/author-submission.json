@@ -1,0 +1,12 @@
+{
+  "projectId": "1d9d3da2-a35c-4122-ab40-638bbd7d62cb",
+  "type": "frontend",
+  "name": "Author Submission — Upload Paper PDF and Track Status",
+  "description": "Verify Author dashboard allows uploading PDF manuscripts, validates magic bytes, and tracks submission status in real-time.",
+  "priority": "p0",
+  "planSteps": [
+    { "type": "action", "description": "Navigate to the Author Dashboard" },
+    { "type": "action", "description": "Open Submit Paper Modal and enter paper title, abstract, and select PDF manuscript" },
+    { "type": "assertion", "description": "Submission success indicator appears and paper is listed in Submitted state under Track Submissions" }
+  ]
+}

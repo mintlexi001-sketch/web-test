@@ -1,0 +1,14 @@
+{
+  "projectId": "1d9d3da2-a35c-4122-ab40-638bbd7d62cb",
+  "type": "frontend",
+  "name": "Admin Assignment & Unassign Notifications",
+  "description": "Verify Admin assigning and unassigning reviewers triggers backend notification routes and status updates.",
+  "priority": "p1",
+  "planSteps": [
+    { "type": "action", "description": "Navigate to Admin Reviewer Assignment view" },
+    { "type": "action", "description": "Select a paper and click Assign Reviewer" },
+    { "type": "assertion", "description": "Reviewer assignment badge updates and assign notification endpoint is invoked" },
+    { "type": "action", "description": "Click Unassign Reviewer button" },
+    { "type": "assertion", "description": "Reviewer is unassigned and unassign notification endpoint is triggered" }
+  ]
+}

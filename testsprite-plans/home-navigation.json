@@ -1,0 +1,15 @@
+{
+  "projectId": "1d9d3da2-a35c-4122-ab40-638bbd7d62cb",
+  "type": "frontend",
+  "name": "Home Page — Hero, Navigation, and Theme Toggle",
+  "description": "Verify home page hero section renders correctly, navigation drawer works, and theme toggle switches seamlessly between light and dark modes.",
+  "priority": "p0",
+  "planSteps": [
+    { "type": "action", "description": "Navigate to the home page" },
+    { "type": "assertion", "description": "Hero section title and main call-to-action buttons are visible and properly styled" },
+    { "type": "action", "description": "Click the theme toggle button in the navigation header" },
+    { "type": "assertion", "description": "Page background and card styling transition smoothly between dark and light themes" },
+    { "type": "action", "description": "Click on the Submit Paper navigation link" },
+    { "type": "assertion", "description": "Submission page or modal opens with clean form controls" }
+  ]
+}

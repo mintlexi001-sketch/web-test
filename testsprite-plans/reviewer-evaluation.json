@@ -1,0 +1,13 @@
+{
+  "projectId": "1d9d3da2-a35c-4122-ab40-638bbd7d62cb",
+  "type": "frontend",
+  "name": "Reviewer Workload — Submit Evaluation and Score Sliders",
+  "description": "Verify Reviewer dashboard displays assigned manuscripts, score sliders, feedback inputs, and report submission.",
+  "priority": "p0",
+  "planSteps": [
+    { "type": "action", "description": "Navigate to the Reviewer Dashboard" },
+    { "type": "assertion", "description": "Assigned papers list shows pending manuscripts with workload counters" },
+    { "type": "action", "description": "Open Review Modal for assigned paper, set score sliders, and enter comments" },
+    { "type": "assertion", "description": "Evaluation submits successfully and status updates to Reviewed" }
+  ]
+}
