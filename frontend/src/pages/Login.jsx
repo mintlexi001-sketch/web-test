@@ -42,6 +42,7 @@ export default function Login() {
       else if (profileData.role === 'reviewer') navigate('/reviewer/dashboard', { replace: true });
       else navigate('/student/dashboard', { replace: true });
     } catch (err) {
+      await supabase.auth.signOut().catch(() => {});
       toast.error(err.message || 'Login failed. Please check your credentials.');
     }
     setLoading(false);
