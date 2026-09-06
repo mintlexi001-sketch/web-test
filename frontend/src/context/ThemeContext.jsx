@@ -6,7 +6,12 @@ const ThemeContext = createContext(null)
 export function ThemeProvider({ children }) {
   // Default to 'light' for new visitors, while preserving user's chosen theme across reloads
   const [theme, setTheme] = useState(() => {
-    return localStorage.getItem('theme') || 'light'
+    try {
+      const saved = localStorage.getItem('theme')
+      return saved === 'dark' ? 'dark' : 'light'
+    } catch {
+      return 'light'
+    }
   })
 
   useEffect(() => {
@@ -18,7 +23,11 @@ export function ThemeProvider({ children }) {
       document.documentElement.classList.add('light')
       document.documentElement.classList.remove('dark')
     }
-    localStorage.setItem('theme', theme)
+    try {
+      localStorage.setItem('theme', theme)
+    } catch (e) {
+      console.error('Failed to update theme in localStorage:', e)
+    }
   }, [theme])
 
   const toggleTheme = () => setTheme(prev => (prev === 'dark' ? 'light' : 'dark'))

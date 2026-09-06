@@ -3,6 +3,25 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script>
+      (function() {
+        try {
+          var saved = localStorage.getItem('theme');
+          var theme = (saved === 'dark' || saved === 'light') ? saved : 'light';
+          document.documentElement.setAttribute('data-theme', theme);
+          if (theme === 'dark') {
+            document.documentElement.classList.add('dark');
+            document.documentElement.classList.remove('light');
+          } else {
+            document.documentElement.classList.add('light');
+            document.documentElement.classList.remove('dark');
+          }
+        } catch (e) {
+          document.documentElement.setAttribute('data-theme', 'light');
+          document.documentElement.classList.add('light');
+        }
+      })();
+    </script>
     <meta name="description" content="Science and Society — A multidisciplinary, peer-reviewed journal by Nirmala Academic and Research Publications (NARP) since 2003." />
     
     <!-- Open Graph for Social Media -->
