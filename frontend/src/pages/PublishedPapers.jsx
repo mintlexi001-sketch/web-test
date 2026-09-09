@@ -345,9 +345,6 @@ function VolumeGrid({ volumes, onSelectIssue }) {
                   <p style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--primary)', textTransform: 'uppercase', letterSpacing: '0.08em', margin: 0 }}>
                     Issues
                   </p>
-                  <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--muted-foreground)' }}>
-                    {issueKeys.length} issue{issueKeys.length !== 1 ? 's' : ''} available
-                  </span>
                 </div>
 
                 {issueKeys.map((issKey) => {
