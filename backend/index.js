@@ -54,6 +54,11 @@ async function removeStorageFiles(paths) {
 
 const app = express();
 
+// Trust the first proxy hop (Render/Vercel load balancer) so that
+// express-rate-limit uses the real client IP from X-Forwarded-For
+// instead of the proxy's IP, which would make per-IP limiting useless.
+app.set('trust proxy', 1);
+
 // Secure HTTP Headers with explicit Content Security Policy (U-7 fix)
 app.use(helmet({
   contentSecurityPolicy: {

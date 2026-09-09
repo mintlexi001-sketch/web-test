@@ -1274,6 +1274,7 @@ CREATE OR REPLACE FUNCTION public.reviewer_respond_to_assignment(
 ) RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 DECLARE
   v_journal_id uuid;
+  v_prev_status text;
 BEGIN
   -- Caller must be the reviewer of this assignment
   SELECT journal_id INTO v_journal_id
@@ -1289,10 +1290,14 @@ BEGIN
     UPDATE public.assignments SET accepted_at = now() WHERE id = p_assignment_id;
   ELSE
     -- Reject: delete assignment and revert journal status to its natural prior state
-    -- (journals that were 'rework' stay 'rework'; all others revert to 'submitted')
+    -- Rework papers revert to 'rework'; all others revert to 'submitted'
+    SELECT CASE WHEN resubmission_count > 0 THEN 'rework' ELSE 'submitted' END
+      INTO v_prev_status
+      FROM public.journals WHERE id = v_journal_id;
+
     DELETE FROM public.assignments WHERE id = p_assignment_id;
     UPDATE public.journals
-       SET status = 'submitted'
+       SET status = v_prev_status
      WHERE id = v_journal_id
        AND NOT EXISTS (SELECT 1 FROM public.assignments WHERE journal_id = v_journal_id);
   END IF;
@@ -1309,7 +1314,8 @@ CREATE OR REPLACE FUNCTION public.unassign_reviewer_from_journal(
   p_force         boolean DEFAULT false
 ) RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 DECLARE
-  v_accepted_at timestamptz;
+  v_accepted_at  timestamptz;
+  v_prev_status  text;
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin') THEN
     RAISE EXCEPTION 'Unauthorized';
@@ -1324,9 +1330,14 @@ BEGIN
     RAISE EXCEPTION 'Reviewer has already accepted this assignment. Use force override to unassign.';
   END IF;
 
+  -- Determine the correct revert status (rework papers go back to rework)
+  SELECT CASE WHEN resubmission_count > 0 THEN 'rework' ELSE 'submitted' END
+    INTO v_prev_status
+    FROM public.journals WHERE id = p_journal_id;
+
   DELETE FROM public.assignments WHERE id = p_assignment_id AND journal_id = p_journal_id;
   IF NOT EXISTS (SELECT 1 FROM public.assignments WHERE journal_id = p_journal_id) THEN
-    UPDATE public.journals SET status = 'submitted' WHERE id = p_journal_id;
+    UPDATE public.journals SET status = v_prev_status WHERE id = p_journal_id;
   END IF;
 END;
 $$;
