@@ -3,6 +3,7 @@ import { Search, UserCheck, UserX, RefreshCw, ChevronDown, ChevronUp, FileText, 
 import { useToast } from '../../components/Toast'
 import { supabase } from '../../lib/supabase'
 import ConfirmModal from '../../components/ConfirmModal'
+import { sendNotification } from '../../lib/api'
 
 export default function AssignedPapers() {
   const toast = useToast()
@@ -42,8 +43,8 @@ export default function AssignedPapers() {
     setLoading(false)
   }
 
-  function triggerUnassign(journalId, assignmentId, reviewerName, journalTitle) {
-    setConfirmData({ journalId, assignmentId, reviewerName, journalTitle })
+  function triggerUnassign(journalId, assignmentId, reviewerName, journalTitle, reviewerId) {
+    setConfirmData({ journalId, assignmentId, reviewerName, journalTitle, reviewerId })
     setConfirmOpen(true)
   }
 
@@ -51,7 +52,7 @@ export default function AssignedPapers() {
     if (!confirmData) return
     setConfirmLoading(true)
 
-    const { journalId, assignmentId, reviewerName } = confirmData
+    const { journalId, assignmentId, reviewerName, journalTitle, reviewerId } = confirmData
 
     // 1. Delete assignment and update status atomically via RPC
     const { error: rpcErr } = await supabase.rpc('unassign_reviewer_from_journal', {
@@ -65,7 +66,16 @@ export default function AssignedPapers() {
       return
     }
 
-    toast.success(`${reviewerName} unassigned — paper moved back to Assign Reviewers`)
+    // 2. Send email + in-app notification to the reviewer
+    let emailFailed = false
+    if (reviewerId) {
+      const res = await sendNotification('/api/notify/unassign-reviewer', {
+        reviewerId,
+        reviewerName: reviewerName || 'Reviewer',
+        journalTitle: journalTitle || 'Manuscript'
+      })
+      if (!res || !res.ok) emailFailed = true
+    }
 
     // 3. Remove from local state
     setPapers(prev => prev.filter(p => p.id !== journalId))
@@ -73,6 +83,12 @@ export default function AssignedPapers() {
     setConfirmLoading(false)
     setConfirmOpen(false)
     setConfirmData(null)
+
+    if (emailFailed) {
+      toast.error('Reviewer unassigned, but email notification failed.', { duration: 5000 })
+    } else {
+      toast.success(`${reviewerName} unassigned — paper moved back to Assign Reviewers`)
+    }
   }
 
   const filtered = papers.filter(p =>
@@ -249,7 +265,7 @@ export default function AssignedPapers() {
                             border: '1px solid #fecaca',
                             display: 'flex', alignItems: 'center', gap: '0.35rem',
                           }}
-                          onClick={() => triggerUnassign(paper.id, assignment.id, reviewerName, paper.title)}
+                          onClick={() => triggerUnassign(paper.id, assignment.id, reviewerName, paper.title, assignment.reviewer_id)}
                           title="Unassign reviewer and return paper to assignment queue"
                         >
                           <UserX size={13} />
