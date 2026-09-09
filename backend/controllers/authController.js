@@ -206,7 +206,7 @@ exports.sendResetOTP = async (req, res) => {
 
   const { error } = await supabase
     .from('custom_otps')
-    .upsert({ email, otp: hashedOtp, expires_at: expiresAt });
+    .upsert({ email, otp: hashedOtp, expires_at: expiresAt, attempts: 0 });
 
   if (error) return res.status(500).json({ error: 'Failed to generate OTP' });
 
@@ -254,10 +254,17 @@ exports.verifyResetOTP = async (req, res) => {
     return res.status(400).json({ error: 'Invalid or expired OTP' });
   }
 
-  // Get user ID by email using the secure RPC
-  const { data: userId, error: rpcError } = await supabase.rpc('get_user_id_by_email', { p_email: email });
+  // Resolve user ID via profiles table, fallback to get_user_id_by_email RPC if needed
+  let userId = null;
+  const { data: profileRow } = await supabase.from('profiles').select('id').eq('email', email).maybeSingle();
+  if (profileRow?.id) {
+    userId = profileRow.id;
+  } else {
+    const { data: rpcUserId } = await supabase.rpc('get_user_id_by_email', { p_email: email });
+    userId = rpcUserId;
+  }
 
-  if (rpcError || !userId) return res.status(404).json({ error: 'User not found' });
+  if (!userId) return res.status(404).json({ error: 'User not found' });
 
   const { error: updateError } = await supabase.auth.admin.updateUserById(
     userId,

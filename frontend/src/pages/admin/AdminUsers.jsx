@@ -6,8 +6,8 @@ import ConfirmModal from '../../components/ConfirmModal'
 import { useAuth } from '../../context/AuthContext'
 import { sendNotification } from '../../lib/api'
 
-// The main permanent admin email — used as a UI safety guard
-const PERMANENT_ADMIN_EMAIL = import.meta.env.VITE_PERMANENT_ADMIN_EMAIL || 'nirmala.scienceandsociety@gmail.com'
+// The main permanent admin email — used as a UI safety guard (from env var)
+const PERMANENT_ADMIN_EMAIL = import.meta.env.VITE_PERMANENT_ADMIN_EMAIL || ''
 
 export default function AdminUsers() {
   const toast = useToast()
@@ -26,7 +26,7 @@ export default function AdminUsers() {
 
   // Is the currently logged-in admin the permanent one?
   const isPermanentAdmin = currentUserProfile?.is_permanent === true ||
-                           currentUserProfile?.email === PERMANENT_ADMIN_EMAIL
+                           (Boolean(PERMANENT_ADMIN_EMAIL) && currentUserProfile?.email === PERMANENT_ADMIN_EMAIL)
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { fetchUsers() }, [])
@@ -227,7 +227,7 @@ export default function AdminUsers() {
   // ── Render Actions: Operation Selector Dropdown with Icons ─────────────────
   function renderActions(u) {
     const isMe = u.id === currentUserProfile?.id
-    const isThisUserPermanent = u.is_permanent || u.email === PERMANENT_ADMIN_EMAIL
+    const isThisUserPermanent = Boolean(u.is_permanent) || (Boolean(PERMANENT_ADMIN_EMAIL) && u.email === PERMANENT_ADMIN_EMAIL)
 
     if (isThisUserPermanent) {
       return (

@@ -231,11 +231,25 @@ exports.notifyResubmit = async (req, res) => {
 
 exports.notifyDecision = async (req, res) => {
   if (!await checkAdmin(req.user?.id)) return res.status(403).json({ error: 'Forbidden' });
-  const { studentId, studentName, journalTitle, status } = req.body;
-  const studentEmail = await getEmailForUser(studentId);
+  const { journalId, studentId, studentName, journalTitle, status } = req.body;
+
+  let targetStudentId = studentId;
+  let targetTitle = journalTitle;
+  let targetName = studentName;
+
+  if (journalId) {
+    const { data: jRow } = await supabase.from('journals').select('student_id, title, profiles(name)').eq('id', journalId).single();
+    if (jRow) {
+      targetStudentId = jRow.student_id;
+      targetTitle = jRow.title || journalTitle;
+      targetName = jRow.profiles?.name || studentName;
+    }
+  }
+
+  const studentEmail = await getEmailForUser(targetStudentId);
   if (!studentEmail) return res.status(404).json({ error: 'Author not found' });
   
-  const html = generateDecisionNotification(esc(studentName), esc(journalTitle), esc(status));
+  const html = generateDecisionNotification(esc(targetName || 'Author'), esc(targetTitle), esc(status));
   const sent = await sendMail(studentEmail, 'Editorial Decision Reached', html);
   res.status(sent ? 200 : 500).json({ success: sent });
 };
@@ -335,55 +349,112 @@ exports.notifyReviewerRejected = async (req, res) => {
 // ── Notify student: paper has been sent to reviewer ───────────────────
 exports.notifySentForReview = async (req, res) => {
   if (!await checkAdmin(req.user?.id)) return res.status(403).json({ error: 'Forbidden' });
-  const { studentId, studentName, journalTitle } = req.body;
-  const studentEmail = await getEmailForUser(studentId);
+  const { journalId, studentId, studentName, journalTitle } = req.body;
+  
+  let targetStudentId = studentId;
+  let targetTitle = journalTitle;
+  let targetName = studentName;
+
+  if (journalId) {
+    const { data: jRow } = await supabase.from('journals').select('student_id, title, profiles(name)').eq('id', journalId).single();
+    if (jRow) {
+      targetStudentId = jRow.student_id;
+      targetTitle = jRow.title || journalTitle;
+      targetName = jRow.profiles?.name || studentName;
+    }
+  }
+
+  const studentEmail = await getEmailForUser(targetStudentId);
   if (!studentEmail) return res.status(404).json({ error: 'Author not found' });
 
-  const html = generateSentForReviewNotification(esc(studentName), esc(journalTitle));
+  const html = generateSentForReviewNotification(esc(targetName || 'Author'), esc(targetTitle));
   await sendMail(studentEmail, 'Your Paper Has Been Sent for Review', html);
-  await insertNotification(studentId, 'Paper Sent for Review', `Your paper "${journalTitle}" has been assigned to a reviewer.`, '/student/journals');
+  await insertNotification(targetStudentId, 'Paper Sent for Review', `Your paper "${targetTitle}" has been assigned to a reviewer.`, '/student/journals');
   res.status(200).json({ success: true });
 };
 
 // ── Notify student: rework/revision requested ─────────────────────────
 exports.notifyRework = async (req, res) => {
   if (!await checkAdmin(req.user?.id)) return res.status(403).json({ error: 'Forbidden' });
-  const { studentId, studentName, journalTitle, adminComments } = req.body;
-  const studentEmail = await getEmailForUser(studentId);
+  const { journalId, studentId, studentName, journalTitle, adminComments } = req.body;
+  
+  let targetStudentId = studentId;
+  let targetTitle = journalTitle;
+  let targetName = studentName;
+
+  if (journalId) {
+    const { data: jRow } = await supabase.from('journals').select('student_id, title, profiles(name)').eq('id', journalId).single();
+    if (jRow) {
+      targetStudentId = jRow.student_id;
+      targetTitle = jRow.title || journalTitle;
+      targetName = jRow.profiles?.name || studentName;
+    }
+  }
+
+  const studentEmail = await getEmailForUser(targetStudentId);
   if (!studentEmail) return res.status(404).json({ error: 'Author not found' });
 
-  const html = generateReworkNotification(esc(studentName), esc(journalTitle), esc(adminComments));
+  const html = generateReworkNotification(esc(targetName || 'Author'), esc(targetTitle), esc(adminComments));
   await sendMail(studentEmail, 'Revision Requested for Your Paper', html);
-  await insertNotification(studentId, 'Revision Requested', `Please revise your paper "${journalTitle}" and resubmit.`, '/student/journals');
+  await insertNotification(targetStudentId, 'Revision Requested', `Please revise your paper "${targetTitle}" and resubmit.`, '/student/journals');
   res.status(200).json({ success: true });
 };
 
 // ── Notify student: paper published ───────────────────────────────────
 exports.notifyPublish = async (req, res) => {
   if (!await checkAdmin(req.user?.id)) return res.status(403).json({ error: 'Forbidden' });
-  const { studentId, studentName, journalTitle, paperId } = req.body;
-  const studentEmail = await getEmailForUser(studentId);
+  const { journalId, studentId, studentName, journalTitle, paperId } = req.body;
+  
+  let targetStudentId = studentId;
+  let targetTitle = journalTitle;
+  let targetName = studentName;
+
+  if (journalId || paperId) {
+    const jId = journalId || paperId;
+    const { data: jRow } = await supabase.from('journals').select('student_id, title, profiles(name)').eq('id', jId).single();
+    if (jRow) {
+      targetStudentId = jRow.student_id;
+      targetTitle = jRow.title || journalTitle;
+      targetName = jRow.profiles?.name || studentName;
+    }
+  }
+
+  const studentEmail = await getEmailForUser(targetStudentId);
   if (!studentEmail) return res.status(404).json({ error: 'Author not found' });
 
   const APP_URL = process.env.APP_URL || 'http://localhost:5173';
-  const paperLink = `${APP_URL}/paper/${encodeURIComponent(paperId)}`;
-  const html = generatePublishedNotification(esc(studentName), esc(journalTitle), paperLink);
+  const paperLink = `${APP_URL}/paper/${encodeURIComponent(paperId || journalId)}`;
+  const html = generatePublishedNotification(esc(targetName || 'Author'), esc(targetTitle), paperLink);
   await sendMail(studentEmail, 'Your Paper Has Been Published!', html);
-  await insertNotification(studentId, 'Paper Published!', `Your paper "${journalTitle}" is now live on the platform.`, `/paper/${paperId}`);
+  await insertNotification(targetStudentId, 'Paper Published!', `Your paper "${targetTitle}" is now live on the platform.`, `/paper/${paperId || journalId}`);
   res.status(200).json({ success: true });
 };
 
 // ── Notify student: paper deleted ─────────────────────────────────────
 exports.notifyPaperDeleted = async (req, res) => {
   if (!await checkAdmin(req.user?.id)) return res.status(403).json({ error: 'Forbidden' });
-  const { studentId, studentName, journalTitle } = req.body;
-  const studentEmail = await getEmailForUser(studentId);
+  const { journalId, studentId, studentName, journalTitle } = req.body;
+  
+  let targetStudentId = studentId;
+  let targetTitle = journalTitle;
+  let targetName = studentName;
+
+  if (journalId) {
+    const { data: jRow } = await supabase.from('journals').select('student_id, title, profiles(name)').eq('id', journalId).single();
+    if (jRow) {
+      targetStudentId = jRow.student_id;
+      targetTitle = jRow.title || journalTitle;
+      targetName = jRow.profiles?.name || studentName;
+    }
+  }
+
+  const studentEmail = await getEmailForUser(targetStudentId);
   if (!studentEmail) return res.status(404).json({ error: 'Author not found' });
 
-  const html = generatePaperDeletedNotification(esc(studentName), esc(journalTitle));
+  const html = generatePaperDeletedNotification(esc(targetName || 'Author'), esc(targetTitle));
   await sendMail(studentEmail, 'Notice: Your Published Paper Has Been Removed', html);
   // Also send an in-app notification
-  await insertNotification(studentId, 'Paper Removed', `Your published paper "${journalTitle}" has been permanently removed by the administration.`, '/student/journals');
+  await insertNotification(targetStudentId, 'Paper Removed', `Your published paper "${targetTitle}" has been permanently removed by the administration.`, '/student/journals');
   res.status(200).json({ success: true });
 };
 
@@ -408,8 +479,16 @@ exports.notifyPaperRequest = async (req, res) => {
   // M4 & C-2 Fix: Require journalId and verify journal exists AND is published before processing paper request
   if (!journalId) return res.status(400).json({ error: 'journalId is required' });
 
-  const { data: journalExists } = await supabase.from('journals').select('id, status').eq('id', journalId).single();
-  if (!journalExists || journalExists.status !== 'published') {
+  let isPublished = false;
+  const { data: journalRow } = await supabase.from('journals').select('id, status').eq('id', journalId).maybeSingle();
+  if (journalRow && journalRow.status === 'published') {
+    isPublished = true;
+  } else {
+    const { data: issueRow } = await supabase.from('published_issues').select('id').eq('id', journalId).maybeSingle();
+    if (issueRow) isPublished = true;
+  }
+
+  if (!isPublished) {
     return res.status(404).json({ error: 'Requested journal not found or is not published' });
   }
 

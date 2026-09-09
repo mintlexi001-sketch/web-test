@@ -254,10 +254,10 @@ export function ReviewReportDetail() {
 
       let emailFailed = false;
       if (selectedDecision === 'rework') {
-        const res = await sendNotification('/api/notify/rework', { studentId, studentName, journalTitle, adminComments })
+        const res = await sendNotification('/api/notify/rework', { journalId: id, studentId, studentName, journalTitle, adminComments })
         if (!res || !res.ok) emailFailed = true;
       } else {
-        const res = await sendNotification('/api/notify/decision', { studentId, studentName, journalTitle, status: selectedDecision })
+        const res = await sendNotification('/api/notify/decision', { journalId: id, studentId, studentName, journalTitle, status: selectedDecision })
         if (!res || !res.ok) emailFailed = true;
       }
 

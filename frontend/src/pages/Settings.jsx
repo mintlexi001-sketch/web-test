@@ -39,8 +39,8 @@ export default function Settings() {
   // Get name fallback (handles admin users or delayed profile loads)
   const displayName = profile?.name || user?.user_metadata?.name || user?.email?.split('@')[0] || 'Unknown User'
 
-  const PERMANENT_ADMIN_EMAIL = import.meta.env.VITE_PERMANENT_ADMIN_EMAIL || 'nirmala.scienceandsociety@gmail.com'
-  const isPermanentAdmin = user?.email === PERMANENT_ADMIN_EMAIL || profile?.is_permanent === true
+  const PERMANENT_ADMIN_EMAIL = import.meta.env.VITE_PERMANENT_ADMIN_EMAIL || ''
+  const isPermanentAdmin = profile?.is_permanent === true || (Boolean(PERMANENT_ADMIN_EMAIL) && user?.email === PERMANENT_ADMIN_EMAIL)
 
   // ── Handlers: Email Change ────────────────────────────────────────
   const handleSendEmailOTP = async (e) => {

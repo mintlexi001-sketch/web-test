@@ -528,12 +528,12 @@ grant execute on function public.unban_user(uuid) to authenticated;
 
 -- ============================================================
 -- 15. Storage Policies (Journals Bucket)
--- Run this to restrict uploads to user's own folder.
+-- Restricts uploads to user's own UID folder.
 -- ============================================================
--- alter table storage.objects enable row level security;
--- drop policy if exists "Users can upload to their own folder" on storage.objects;
--- create policy "Users can upload to their own folder" on storage.objects for insert
--- with check ( bucket_id = 'journals' and (storage.foldername(name))[1] = auth.uid()::text );
+alter table storage.objects enable row level security;
+drop policy if exists "Users can upload to their own folder" on storage.objects;
+create policy "Users can upload to their own folder" on storage.objects for insert
+  with check ( bucket_id = 'journals' and (storage.foldername(name))[1] = auth.uid()::text );
 
 -- ============================================================
 -- 16. Current Issue Settings
