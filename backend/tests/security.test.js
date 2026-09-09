@@ -257,3 +257,40 @@ describe('POST /api/student/resubmit', () => {
     expect(res.body.error).toMatch(/too long/);
   });
 });
+
+// ══════════════════════════════════════════════════════════════════════════
+// 4. Critical Bug Regression Tests (C-1 & C-2)
+// ══════════════════════════════════════════════════════════════════════════
+describe('Critical Bug Regression Tests (C-1 & C-2)', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it('C-2: 404 — paper request for unpublished journal is rejected', async () => {
+    setupFrom({
+      journals: () => buildChain({ data: { id: JOURNAL_ID, status: 'under_review' }, error: null }),
+    });
+    const res = await request(app).post('/api/notify/paper-request')
+      .send({
+        requesterName: 'John Doe',
+        requesterEmail: 'john@example.com',
+        journalTitle: 'Unpublished Paper',
+        journalId: JOURNAL_ID,
+      });
+    expect(res.status).toBe(404);
+    expect(res.body.error).toMatch(/not published/);
+  });
+
+  it('C-1: 400 — verifyResetOTP handles invalid OTP cleanly without 500 ReferenceError', async () => {
+    setupFrom({
+      custom_otps: () => buildChain({ data: { email: 'user@example.com', otp: '123456', expires_at: new Date(Date.now() + 60000).toISOString() }, error: null }),
+    });
+    const res = await request(app).post('/api/auth/verify-reset')
+      .send({
+        email: 'user@example.com',
+        otp: '999999',
+        newPassword: 'Password123!',
+      });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBe('Invalid or expired OTP');
+  });
+});
+

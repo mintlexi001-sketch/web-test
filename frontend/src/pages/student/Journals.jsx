@@ -7,7 +7,7 @@ import { useAuth } from '../../context/AuthContext'
 import { sendNotification } from '../../lib/api'
 import ConfirmModal from '../../components/ConfirmModal'
 
-const statusLabels = { pending: 'Pending', submitted: 'Submitted', under_review: 'Under Review', approved: 'Accepted', rejected: 'Rejected', revision_required: 'Revision Required', rework: 'Revision Required', published: 'Published' }
+const statusLabels = { pending: 'Pending', submitted: 'Submitted', under_review: 'Under Review', approved: 'Accepted', accepted: 'Accepted', rejected: 'Rejected', revision_required: 'Revision Required', rework: 'Revision Required', published: 'Published' }
 
 const isPdfMagicBytes = (file) =>
   new Promise((resolve) => {
@@ -60,7 +60,11 @@ export function StudentJournals() {
 
 
 
-  const filtered = filter === 'all' ? journals : journals.filter(j => j.status === filter)
+  const filtered = filter === 'all'
+    ? journals
+    : (filter === 'approved' || filter === 'accepted')
+    ? journals.filter(j => j.status === 'approved' || j.status === 'accepted')
+    : journals.filter(j => j.status === filter)
 
   function triggerDelete(id) {
     setConfirmId(id)
@@ -200,7 +204,7 @@ export function StudentJournalDetail() {
     const [journalRes, reviewsRes] = await Promise.all([
       supabase.from('journals').select('*').eq('id', id).single(),
       supabase.from('reviews')
-        .select('id, decision, comments, originality, methodology, clarity, refs, overall, created_at, profiles(name)')
+        .select('id, decision, comments, originality, methodology, clarity, refs, overall, created_at')
         .eq('journal_id', id)
         .order('created_at', { ascending: true }),
     ])
@@ -240,8 +244,7 @@ export function StudentJournalDetail() {
       }
 
       // The backend securely fetches the previous reviewer name from the DB.
-      // We don't need to fetch it from assignments here (students also lack RLS access to assignments).
-      const prevReviewerName = reviews.length > 0 ? reviews[reviews.length - 1]?.profiles?.name : null
+      const prevReviewerName = null
 
       // ── 1. Upload the new manuscript file ──────────────────────────────
       // RLS Policy requires students to upload strictly to their own UID folder

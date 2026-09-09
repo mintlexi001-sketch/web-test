@@ -108,9 +108,6 @@ export function AssignedJournals() {
               <div>
                 <h3 className="font-medium">{j.title}</h3>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', marginTop: '0.25rem' }}>
-                  <span className="text-xs text-muted" style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                    <User size={12} />{j.profiles?.name ?? '—'}
-                  </span>
                   <span className="text-xs text-muted">Submitted {new Date(j.created_at).toLocaleDateString()}</span>
                   {j.resubmission_count > 0 && (
                     <span className="badge" style={{ background: '#dbeafe', color: '#1e40af', fontWeight: 600, fontSize: '0.65rem' }}>
@@ -172,7 +169,7 @@ export function ReviewJournal() {
   async function fetchJournal() {
     setLoading(true)
     const [journalRes, reviewRes] = await Promise.all([
-      supabase.from('journals').select('*, profiles(name)').eq('id', id).single(),
+      supabase.from('journals').select('*').eq('id', id).single(),
       supabase.from('reviews').select('*').eq('journal_id', id).eq('reviewer_id', user?.id).maybeSingle(),
     ])
     setJournal(journalRes.data ?? null)
@@ -291,7 +288,7 @@ export function ReviewJournal() {
           <div className="card">
             <div className="card-header" style={{ paddingBottom: '1rem', borderBottom: '1px solid var(--border)', marginBottom: '1.5rem' }}>
               <div className="card-title" style={{ fontSize: '1.6rem', marginBottom: '0.5rem', color: 'var(--foreground)' }}>{journal.title}</div>
-              <div className="card-description" style={{ fontSize: '1.05rem', color: 'var(--muted-foreground)' }}>by <span style={{ fontWeight: 500, color: 'var(--foreground)' }}>{journal.profiles?.name ?? '—'}</span> · Level {journal.review_level} Review</div>
+              <div className="card-description" style={{ fontSize: '1.05rem', color: 'var(--muted-foreground)' }}>Level {journal.review_level} Review</div>
             </div>
             <div className="card-content space-y-6">
               <div>

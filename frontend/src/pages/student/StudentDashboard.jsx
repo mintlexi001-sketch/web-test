@@ -4,7 +4,7 @@ import { FileText, Clock, CheckCircle, XCircle } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../context/AuthContext'
 
-const statusLabels = { submitted: 'Submitted', under_review: 'Under Review', approved: 'Approved', rejected: 'Rejected', revision_required: 'Revision Required', rework: 'Revision Required', published: 'Published' }
+const statusLabels = { submitted: 'Submitted', under_review: 'Under Review', approved: 'Accepted', accepted: 'Accepted', rejected: 'Rejected', revision_required: 'Revision Required', rework: 'Revision Required', published: 'Published' }
 
 export default function StudentDashboard() {
   const { user } = useAuth()
@@ -32,7 +32,7 @@ export default function StudentDashboard() {
     ] = await Promise.all([
       supabase.from('journals').select('id', { count: 'exact', head: true }).eq('student_id', user.id),
       supabase.from('journals').select('id', { count: 'exact', head: true }).eq('student_id', user.id).eq('status', 'under_review'),
-      supabase.from('journals').select('id', { count: 'exact', head: true }).eq('student_id', user.id).eq('status', 'approved'),
+      supabase.from('journals').select('id', { count: 'exact', head: true }).eq('student_id', user.id).in('status', ['approved', 'accepted', 'published']),
       supabase.from('journals').select('id', { count: 'exact', head: true }).eq('student_id', user.id).eq('status', 'rejected'),
       supabase.from('journals').select('id, title, status, created_at').eq('student_id', user.id).order('created_at', { ascending: false }).limit(3),
     ])
@@ -51,7 +51,7 @@ export default function StudentDashboard() {
     { label: 'Total Submissions', value: stats.total, icon: FileText, color: 'var(--primary)' },
     { label: 'Under Review', value: stats.underReview, icon: Clock, color: '#d97706' },
     { label: 'Accepted', value: stats.approved, icon: CheckCircle, color: '#059669' },
-    { label: 'Rejected', value: stats.rejected, icon: XCircle, },
+    { label: 'Rejected', value: stats.rejected, icon: XCircle, color: '#dc2626' },
   ]
 
   const recentSubmissions = journals

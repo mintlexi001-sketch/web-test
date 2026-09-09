@@ -20,6 +20,7 @@ const {
   generatePaperDeletedNotification,
   generateContactNotification,
   generateContactReply,
+  generateUnassignNotification,
   escHtml
 } = require('../utils/emailTemplates');
 
@@ -74,6 +75,22 @@ exports.notifyUpload = async (req, res) => {
   const { data: issue } = await supabase.from('current_issue').select('is_open').eq('id', 1).single();
   if (!issue || !issue.is_open) {
     return res.status(403).json({ error: 'Paper submissions are currently closed.' });
+  }
+
+  // H-3 Fix: Verify caller is an active student and journal actually exists in DB before sending notifications
+  const { data: profile } = await supabase.from('profiles').select('role, status').eq('id', req.user?.id).single();
+  if (!profile || profile.role !== 'student' || profile.status !== 'active') {
+    return res.status(403).json({ error: 'Forbidden: Only active authors can send upload notifications' });
+  }
+
+  const { data: uploadedJournal } = await supabase
+    .from('journals')
+    .select('id')
+    .eq('student_id', req.user.id)
+    .eq('title', journalTitle.trim())
+    .maybeSingle();
+  if (!uploadedJournal) {
+    return res.status(404).json({ error: 'Matching submitted paper not found in database' });
   }
 
   const studentEmail = req.user?.email || (req.user?.id ? await getEmailForUser(req.user.id) : null);
@@ -156,18 +173,21 @@ exports.notifyReview = async (req, res) => {
   // 2. Send in-app notification to all admins
   await notifyAdminsInApp('Review Report Submitted', `Reviewer ${reviewerName || 'assigned'} submitted a report for "${journalTitle}".`, '/admin/reports');
 
-  // 3. Notify Author that their paper has been reviewed and is pending editorial decision
-  if (studentId) {
-    const studentEmail = await getEmailForUser(studentId);
+  // H-2 Fix: Resolve actual student_id from journal row to prevent spoofed studentId calls
+  const { data: journalRow } = await supabase.from('journals').select('student_id').eq('id', journalId).single();
+  const actualStudentId = journalRow?.student_id;
+
+  if (actualStudentId) {
+    const studentEmail = await getEmailForUser(actualStudentId);
     if (studentEmail) {
       const htmlAuthor = generateReviewCompleteNotification('student', esc(journalTitle), null, esc(reviewerName));
       await sendMail(studentEmail, `Your Paper Has Been Reviewed — "${esc(journalTitle)}"`, htmlAuthor);
     }
     // In-app notification for the author
     await insertNotification(
-      studentId,
+      actualStudentId,
       'Paper Review Completed',
-      `Your paper "${journalTitle}" has been reviewed. The editorial board will now make a final decision.`,
+      `A reviewer has completed their report for "${journalTitle}". Your manuscript is now awaiting final decision by the editor.`,
       '/student/journals'
     );
   }
@@ -383,23 +403,26 @@ exports.notifyPaperRequest = async (req, res) => {
   if (affiliation && typeof affiliation === 'string' && affiliation.length > 200) return res.status(400).json({ error: 'Affiliation too long (max 200 chars)' });
   if (reason && typeof reason === 'string' && reason.length > 1000) return res.status(400).json({ error: 'Reason too long (max 1000 chars)' });
 
-  // SEC-002: Insert the paper_requests row server-side after honeypot validation passes.
-  // The frontend no longer inserts directly into Supabase — the server owns all DB writes.
-  // Bots are caught by the honeypot field (website_url) above.
-  if (journalId) {
-    const { error: insertError } = await supabase.from('paper_requests').insert({
-      journal_id: journalId,
-      journal_title: journalTitle.trim(),
-      requester_name: requesterName.trim(),
-      requester_email: requesterEmail.trim(),
-      affiliation: affiliation?.trim() || null,
-      reason: reason?.trim() || null,
-      status: 'pending',
-    });
-    if (insertError) {
-      console.error('paper_requests insert error:', insertError);
-      return res.status(500).json({ error: 'Failed to save paper request. Please try again.' });
-    }
+  // M4 & C-2 Fix: Require journalId and verify journal exists AND is published before processing paper request
+  if (!journalId) return res.status(400).json({ error: 'journalId is required' });
+
+  const { data: journalExists } = await supabase.from('journals').select('id, status').eq('id', journalId).single();
+  if (!journalExists || journalExists.status !== 'published') {
+    return res.status(404).json({ error: 'Requested journal not found or is not published' });
+  }
+
+  const { error: insertError } = await supabase.from('paper_requests').insert({
+    journal_id: journalId,
+    journal_title: journalTitle.trim(),
+    requester_name: requesterName.trim(),
+    requester_email: requesterEmail.trim(),
+    affiliation: affiliation?.trim() || null,
+    reason: reason?.trim() || null,
+    status: 'pending',
+  });
+  if (insertError) {
+    console.error('paper_requests insert error:', insertError);
+    return res.status(500).json({ error: 'Failed to save paper request. Please try again.' });
   }
   
   const html = generatePaperRequestAdminNotification(

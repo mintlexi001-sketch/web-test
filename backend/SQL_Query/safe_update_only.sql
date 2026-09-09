@@ -149,7 +149,13 @@ SELECT
   j.abstract,
   j.category,
   j.keywords,
-  j.authors,
+  (
+    SELECT COALESCE(
+      jsonb_agg(elem - 'email'),
+      '[]'::jsonb
+    )
+    FROM jsonb_array_elements(j.authors) AS elem
+  ) AS authors,
   j.volume_number,
   j.issue_number,
   j.published_at,
@@ -462,6 +468,7 @@ BEGIN
 END;
 $$;
 REVOKE EXECUTE ON FUNCTION public.approve_reviewer(uuid) FROM public;
+GRANT  EXECUTE ON FUNCTION public.approve_reviewer(uuid) TO authenticated;
 
 -- promote_to_admin: Elevates an active user to the admin role.
 -- SECURITY: Callable only by the permanent admin (is_permanent = true).
@@ -609,7 +616,17 @@ BEGIN
   IF current_setting('role', true) IN ('anon', 'authenticated', 'service_role') THEN
 
     IF TG_OP = 'INSERT' THEN
-      IF NOT EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin') THEN
+      IF current_setting('role', true) = 'service_role' OR EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin') THEN
+        -- Allow service_role (Express backend) and admins to specify valid roles/statuses during profile creation
+        IF NEW.role NOT IN ('student', 'reviewer', 'admin') THEN
+          NEW.role := 'student';
+        END IF;
+        IF NEW.status NOT IN ('active', 'pending', 'inactive') THEN
+          NEW.status := 'active';
+        END IF;
+        NEW.is_permanent := COALESCE(NEW.is_permanent, false);
+      ELSE
+        -- Direct client inserts (anon/authenticated) default to active student
         NEW.role        := 'student';
         NEW.status      := 'active';
         NEW.is_permanent := false;
@@ -956,8 +973,8 @@ BEGIN
   IF NOT EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin') THEN
     RAISE EXCEPTION 'Unauthorized';
   END IF;
-  IF (SELECT status FROM public.profiles WHERE id = p_reviewer_id) != 'active' THEN
-    RAISE EXCEPTION 'Cannot assign: Reviewer is not active';
+  IF NOT EXISTS (SELECT 1 FROM public.profiles WHERE id = p_reviewer_id AND role = 'reviewer' AND status = 'active') THEN
+    RAISE EXCEPTION 'Cannot assign: Selected user is not an active reviewer';
   END IF;
   -- Atomic check-and-insert (single transaction, no TOCTOU)
   IF EXISTS (SELECT 1 FROM public.assignments WHERE journal_id = p_journal_id FOR UPDATE) THEN
@@ -1115,12 +1132,20 @@ language plpgsql
 security definer
 set search_path = public
 as $$
+declare
+  v_role text;
 begin
   if not exists (select 1 from public.profiles where id = auth.uid() and role = 'admin') then
     raise exception 'Unauthorized';
   end if;
 
-  update public.profiles set status = 'active' where id = p_user_id;
+  select role into v_role from public.profiles where id = p_user_id;
+
+  if v_role = 'reviewer' then
+    update public.profiles set status = 'pending' where id = p_user_id;
+  else
+    update public.profiles set status = 'active' where id = p_user_id;
+  end if;
 end;
 $$;
 REVOKE EXECUTE ON FUNCTION public.unban_user(uuid) FROM public;
@@ -1190,4 +1215,46 @@ END;
 $$;
 REVOKE EXECUTE ON FUNCTION public.publish_pre_compile(uuid, text, text, jsonb, text) FROM public;
 GRANT EXECUTE ON FUNCTION public.publish_pre_compile(uuid, text, text, jsonb, text) TO authenticated;
+
+-- ============================================================
+-- AUDIT REMEDIATION PATCHES (H4, M5, M9)
+-- ============================================================
+
+-- M5 Fix: Add attempts tracking column to custom_otps table
+ALTER TABLE public.custom_otps ADD COLUMN IF NOT EXISTS attempts integer NOT NULL DEFAULT 0;
+
+-- M9 Fix: Revoke direct client access to resubmit_journal RPC (Express backend owns resubmissions)
+REVOKE EXECUTE ON FUNCTION public.resubmit_journal(uuid, text, text, text, text, text, text, text, text, int, jsonb, text) FROM public, anon, authenticated;
+
+-- H4 Fix: Reviewer-safe assigned journals RPC (excludes PII / author identities)
+CREATE OR REPLACE FUNCTION public.get_assigned_journals_for_reviewer()
+RETURNS TABLE (
+  id uuid,
+  title text,
+  abstract text,
+  category text,
+  keywords text,
+  status text,
+  created_at timestamptz,
+  file_url text
+) LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+BEGIN
+  RETURN QUERY
+  SELECT
+    j.id,
+    j.title,
+    j.abstract,
+    j.category,
+    j.keywords,
+    j.status,
+    j.created_at,
+    j.file_url
+  FROM public.journals j
+  JOIN public.assignments a ON a.journal_id = j.id
+  WHERE a.reviewer_id = auth.uid();
+END;
+$$;
+REVOKE EXECUTE ON FUNCTION public.get_assigned_journals_for_reviewer() FROM public, anon;
+GRANT EXECUTE ON FUNCTION public.get_assigned_journals_for_reviewer() TO authenticated;
+
 

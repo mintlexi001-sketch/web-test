@@ -174,12 +174,51 @@ create policy "Reviewers and Admins can update reviews" on public.reviews for up
 -- 5. Storage bucket for PDFs
 -- Run in Supabase dashboard → Storage → Create bucket named "journals" (private)
 -- Or via SQL:
-insert into storage.buckets (id, name, public) values ('journals', 'journals', false)
-  on conflict do nothing;
+insert into storage.buckets (id, name, public, allowed_mime_types, file_size_limit) 
+values ('journals', 'journals', false, ARRAY['application/pdf']::text[], 10485760)
+on conflict (id) do update set 
+  public = false,
+  allowed_mime_types = ARRAY['application/pdf']::text[],
+  file_size_limit = 10485760;
 
 drop policy if exists "Anyone can read journal files" on storage.objects;
-create policy "Anyone can read journal files" on storage.objects for select
-  using ( bucket_id = 'journals' );
+drop policy if exists "Public can read published journals" on storage.objects;
+drop policy if exists "Journal files access control" on storage.objects;
+create policy "Journal files access control" on storage.objects
+  for select using (
+    bucket_id = 'journals'
+    and (
+      owner = auth.uid()
+      or exists (
+        select 1 from public.profiles
+        where id = auth.uid() and role = 'admin'
+      )
+      or exists (
+        select 1 from public.assignments a
+        join public.journals j on a.journal_id = j.id
+        where a.reviewer_id = (select auth.uid())
+        and (select status from public.profiles where id = auth.uid()) = 'active'
+        and (
+          j.file_url = storage.objects.name
+          or right(j.file_url, length(storage.objects.name) + 1) = '/' || storage.objects.name
+          or coalesce(j.revision_report_url, '') = storage.objects.name
+          or right(coalesce(j.revision_report_url, ''), length(storage.objects.name) + 1) = '/' || storage.objects.name
+        )
+      )
+      or exists (
+        select 1 from public.journals j
+        where j.student_id = (select auth.uid())
+        and (select status from public.profiles where id = auth.uid()) = 'active'
+        and (
+          j.file_url = storage.objects.name
+          or right(j.file_url, length(storage.objects.name) + 1) = '/' || storage.objects.name
+          or coalesce(j.revision_report_url, '') = storage.objects.name
+          or right(coalesce(j.revision_report_url, ''), length(storage.objects.name) + 1) = '/' || storage.objects.name
+        )
+      )
+    )
+  );
+
 drop policy if exists "Authenticated users can upload" on storage.objects;
 create policy "Users can upload to their own folder" on storage.objects for insert
   with check ( bucket_id = 'journals' and (storage.foldername(name))[1] = auth.uid()::text );

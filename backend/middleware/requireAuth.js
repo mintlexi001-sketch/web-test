@@ -29,6 +29,9 @@ const requireAuth = async (req, res, next) => {
     if (!profile || profile.status === 'inactive') {
       return res.status(403).json({ error: 'Forbidden: Account is inactive or banned' });
     }
+    if (profile.status === 'pending') {
+      return res.status(403).json({ error: 'Forbidden: Account is pending approval' });
+    }
 
     // Attach the user to the request object
     req.user = user;

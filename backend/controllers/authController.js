@@ -133,9 +133,12 @@ exports.verifyRegisterOTP = async (req, res) => {
   }
 
   if (!timingSafeCompare(data.otp, hashOTP(otp))) {
-    // Wrong OTP: delete to prevent brute-force iteration
-    await supabase.from('custom_otps').delete().eq('email', email);
-    // Return same message as expired OTP to avoid distinguishing between the two (timing attack prevention)
+    const attempts = (data.attempts || 0) + 1;
+    if (attempts >= 3) {
+      await supabase.from('custom_otps').delete().eq('email', email);
+    } else {
+      await supabase.from('custom_otps').update({ attempts }).eq('email', email);
+    }
     return res.status(400).json({ error: 'Invalid or expired OTP' });
   }
 
@@ -233,13 +236,21 @@ exports.verifyResetOTP = async (req, res) => {
     return res.status(400).json({ error: 'Invalid or expired OTP' });
   }
 
-  // Check OTP validity — unified error to prevent distinguishing expired vs. wrong guess
   const isExpired = new Date() > new Date(data.expires_at);
   const isWrongOtp = !timingSafeCompare(data.otp, hashOTP(otp));
-  
-  if (isExpired || isWrongOtp) {
-    // Delete OTP on any failure (matches register flow — prevents brute-force)
+
+  if (isExpired) {
     await supabase.from('custom_otps').delete().eq('email', email);
+    return res.status(400).json({ error: 'Invalid or expired OTP' });
+  }
+
+  if (isWrongOtp) {
+    const attempts = (data.attempts || 0) + 1;
+    if (attempts >= 3) {
+      await supabase.from('custom_otps').delete().eq('email', email);
+    } else {
+      await supabase.from('custom_otps').update({ attempts }).eq('email', email);
+    }
     return res.status(400).json({ error: 'Invalid or expired OTP' });
   }
 

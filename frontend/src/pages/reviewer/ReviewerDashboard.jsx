@@ -17,10 +17,10 @@ export default function ReviewerDashboard() {
     setLoading(true)
     setFetchError(false)
 
-    // Fetch assignments for this reviewer with journal info (including author name)
+    // Fetch assignments for this reviewer with journal info
     const { data: assignments, error: assignErr } = await supabase
       .from('assignments')
-      .select(`journals ( id, title, review_level, created_at, profiles ( name ) )`)
+      .select(`journals ( id, title, review_level, created_at )`)
       .eq('reviewer_id', user.id)
 
     if (assignErr) {
@@ -117,9 +117,6 @@ export default function ReviewerDashboard() {
               <div>
                 <h3 className="font-medium">{j.title}</h3>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginTop: '0.25rem' }}>
-                  <span className="text-xs text-muted" style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                    <User size={12} /> {j.profiles?.name ?? '—'}
-                  </span>
                   <span className="text-xs text-muted">Level {j.review_level} Review</span>
                 </div>
               </div>
