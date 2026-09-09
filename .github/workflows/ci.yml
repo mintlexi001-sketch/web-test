@@ -53,6 +53,5 @@ jobs:
           VITE_SUPABASE_URL: https://placeholder.supabase.co
           VITE_SUPABASE_ANON_KEY: placeholder_anon_key
           VITE_API_URL: https://placeholder-api.example.com
-          VITE_TURNSTILE_SITE_KEY: 1x00000000000000000000AA
           VITE_PERMANENT_ADMIN_EMAIL: ci@example.com
         run: npm run build
