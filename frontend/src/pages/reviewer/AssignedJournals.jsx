@@ -252,6 +252,7 @@ export function ReviewJournal() {
   const [existing, setExisting] = useState(null)
   const [confirmRead, setConfirmRead] = useState(false)
   const [editMode, setEditMode] = useState(false)
+  const [isReplacingFile, setIsReplacingFile] = useState(false)
   const [acceptingAssignment, setAcceptingAssignment] = useState(false)
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -555,7 +556,7 @@ export function ReviewJournal() {
                     </p>
 
                     {/* Show existing uploaded file if already submitted */}
-                    {existing && existingReportUrl && !revisionFile ? (
+                    {existing && existingReportUrl && !revisionFile && !isReplacingFile ? (
                       <div style={{
                         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                         padding: '0.75rem', background: 'var(--muted)',
@@ -578,7 +579,7 @@ export function ReviewJournal() {
                           >
                             <Download size={13} /> View
                           </button>
-                          <button type="button" className="btn btn-primary btn-sm" onClick={() => setRevisionFile(undefined)}>
+                          <button type="button" className="btn btn-primary btn-sm" onClick={() => setIsReplacingFile(true)}>
                             Replace
                           </button>
                         </div>
@@ -593,22 +594,34 @@ export function ReviewJournal() {
                           <FileText size={16} style={{ color: 'var(--primary)' }} />
                           <span className="text-sm">{revisionFile.name}</span>
                         </div>
-                        <button type="button" className="btn btn-primary btn-sm" onClick={() => setRevisionFile(null)}>Remove</button>
+                        <button type="button" className="btn btn-primary btn-sm" onClick={() => { setRevisionFile(null); setIsReplacingFile(false); }}>Remove</button>
                       </div>
                     ) : (
-                      <label style={{
-                        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                        padding: '1.5rem', borderRadius: 'var(--radius)',
-                        border: '2px dashed var(--border)', cursor: 'pointer',
-                        background: 'var(--muted)', gap: '0.5rem',
-                        transition: 'border-color 0.2s'
-                      }}>
-                        <Upload size={24} style={{ color: 'var(--primary)', opacity: 0.7 }} />
-                        <span className="text-sm font-medium">Click to upload PDF</span>
-                        <span className="text-xs text-muted">Only PDF files accepted</span>
-                        <input type="file" accept=".pdf" style={{ display: 'none' }}
-                          onChange={e => { if (e.target.files?.[0]) setRevisionFile(e.target.files[0]) }} />
-                      </label>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                        <label style={{
+                          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                          padding: '1.5rem', borderRadius: 'var(--radius)',
+                          border: '2px dashed var(--border)', cursor: 'pointer',
+                          background: 'var(--muted)', gap: '0.5rem',
+                          transition: 'border-color 0.2s'
+                        }}>
+                          <Upload size={24} style={{ color: 'var(--primary)', opacity: 0.7 }} />
+                          <span className="text-sm font-medium">Click to upload PDF</span>
+                          <span className="text-xs text-muted">Only PDF files accepted</span>
+                          <input type="file" accept=".pdf" style={{ display: 'none' }}
+                            onChange={e => { if (e.target.files?.[0]) setRevisionFile(e.target.files[0]) }} />
+                        </label>
+                        {isReplacingFile && (
+                          <button
+                            type="button"
+                            className="btn btn-outline btn-sm"
+                            onClick={() => setIsReplacingFile(false)}
+                            style={{ alignSelf: 'flex-start' }}
+                          >
+                            Cancel Replace
+                          </button>
+                        )}
+                      </div>
                     )}
                   </div>
 

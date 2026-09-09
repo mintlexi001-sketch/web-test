@@ -1292,7 +1292,7 @@ BEGIN
     -- (journals that were 'rework' stay 'rework'; all others revert to 'submitted')
     DELETE FROM public.assignments WHERE id = p_assignment_id;
     UPDATE public.journals
-       SET status = CASE WHEN status = 'rework' THEN 'rework' ELSE 'submitted' END
+       SET status = 'submitted'
      WHERE id = v_journal_id
        AND NOT EXISTS (SELECT 1 FROM public.assignments WHERE journal_id = v_journal_id);
   END IF;
