@@ -367,3 +367,29 @@ module.exports.generateContactReply = (originalSubject, originalMessage, replyMe
     customContent: ''
   });
 };
+
+// Sent to ADMIN when reviewer declines/rejects an assignment
+exports.generateReviewerDeclinedAssignmentNotification = (reviewerName, journalTitle) => renderMasterTemplate({
+  title: 'Reviewer Declined Assignment',
+  greeting: `Hello Admin`,
+  intro: `A reviewer has declined the review assignment for the following manuscript on Science & Society. Please assign another reviewer.`,
+  detailsHTML: `
+    <p style="margin: 0 0 8px 0;"><strong>Reviewer:</strong> ${reviewerName}</p>
+    <p style="margin: 0;"><strong>Manuscript:</strong> ${journalTitle}</p>
+  `,
+  actionText: 'Assign New Reviewer',
+  actionUrl: `${APP_URL}/admin/assign`
+});
+
+// Sent to REVIEWER when admin force-unassigns after acceptance
+exports.generateForceUnassignNotification = (reviewerName, journalTitle) => renderMasterTemplate({
+  title: 'Review Assignment Revoked',
+  greeting: `Hello ${reviewerName}`,
+  intro: `Your previously accepted review assignment has been revoked by the editorial team. We apologise for any inconvenience.`,
+  detailsHTML: `
+    <p style="margin: 0;"><strong>Manuscript:</strong> ${journalTitle}</p>
+  `,
+  actionText: 'Go to Dashboard',
+  actionUrl: `${APP_URL}/reviewer/assigned`
+});
+

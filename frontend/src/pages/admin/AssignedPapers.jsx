@@ -29,7 +29,7 @@ export default function AssignedPapers() {
         id, title, abstract, keywords, file_url, created_at,
         resubmission_count, status,
         profiles(name, id),
-        assignments(id, reviewer_id, profiles(name, id))
+        assignments(id, reviewer_id, accepted_at, profiles(name, id))
       `)
       .eq('status', 'under_review')
       .order('created_at', { ascending: false })
@@ -43,8 +43,8 @@ export default function AssignedPapers() {
     setLoading(false)
   }
 
-  function triggerUnassign(journalId, assignmentId, reviewerName, journalTitle, reviewerId) {
-    setConfirmData({ journalId, assignmentId, reviewerName, journalTitle, reviewerId })
+  function triggerUnassign(journalId, assignmentId, reviewerName, journalTitle, reviewerId, acceptedAt) {
+    setConfirmData({ journalId, assignmentId, reviewerName, journalTitle, reviewerId, acceptedAt })
     setConfirmOpen(true)
   }
 
@@ -52,16 +52,18 @@ export default function AssignedPapers() {
     if (!confirmData) return
     setConfirmLoading(true)
 
-    const { journalId, assignmentId, reviewerName, journalTitle, reviewerId } = confirmData
+    const { journalId, assignmentId, reviewerName, journalTitle, reviewerId, acceptedAt } = confirmData
+    const isAccepted = Boolean(acceptedAt)
 
-    // 1. Delete assignment and update status atomically via RPC
+    // 1. Delete assignment and update status atomically via RPC (pass p_force if already accepted)
     const { error: rpcErr } = await supabase.rpc('unassign_reviewer_from_journal', {
       p_journal_id: journalId,
-      p_assignment_id: assignmentId
+      p_assignment_id: assignmentId,
+      p_force: isAccepted
     })
 
     if (rpcErr) {
-      toast.error('Failed to unassign reviewer')
+      toast.error(rpcErr.message || 'Failed to unassign reviewer')
       setConfirmLoading(false)
       return
     }
@@ -69,7 +71,8 @@ export default function AssignedPapers() {
     // 2. Send email + in-app notification to the reviewer
     let emailFailed = false
     if (reviewerId) {
-      const res = await sendNotification('/api/notify/unassign-reviewer', {
+      const endpoint = isAccepted ? '/api/notify/force-unassign' : '/api/notify/unassign-reviewer'
+      const res = await sendNotification(endpoint, {
         reviewerId,
         reviewerName: reviewerName || 'Reviewer',
         journalTitle: journalTitle || 'Manuscript'
@@ -243,7 +246,7 @@ export default function AssignedPapers() {
                     </div>
 
                     {/* Right actions */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexShrink: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexShrink: 0, flexWrap: 'wrap' }}>
                       {/* Reviewer badge */}
                       <div style={{
                         display: 'flex', alignItems: 'center', gap: '0.4rem',
@@ -256,6 +259,19 @@ export default function AssignedPapers() {
                         </span>
                       </div>
 
+                      {/* Acceptance status badge */}
+                      {assignment && (
+                        <span style={{
+                          fontSize: '0.72rem', fontWeight: 700,
+                          padding: '0.25rem 0.6rem', borderRadius: '9999px',
+                          background: assignment.accepted_at ? '#d1fae5' : '#fef3c7',
+                          color: assignment.accepted_at ? '#065f46' : '#92400e',
+                          border: `1px solid ${assignment.accepted_at ? '#a7f3d0' : '#fde68a'}`,
+                        }}>
+                          {assignment.accepted_at ? '✓ Accepted' : '⏳ Pending Acceptance'}
+                        </span>
+                      )}
+
                       {/* Unassign button */}
                       {assignment && (
                         <button
@@ -265,11 +281,11 @@ export default function AssignedPapers() {
                             border: '1px solid #fecaca',
                             display: 'flex', alignItems: 'center', gap: '0.35rem',
                           }}
-                          onClick={() => triggerUnassign(paper.id, assignment.id, reviewerName, paper.title, assignment.reviewer_id)}
-                          title="Unassign reviewer and return paper to assignment queue"
+                          onClick={() => triggerUnassign(paper.id, assignment.id, reviewerName, paper.title, assignment.reviewer_id, assignment.accepted_at)}
+                          title={assignment.accepted_at ? "Reviewer has accepted. Unassigning will force-revoke their assignment." : "Unassign reviewer and return paper to assignment queue"}
                         >
                           <UserX size={13} />
-                          Unassign
+                          {assignment.accepted_at ? 'Force Unassign' : 'Unassign'}
                         </button>
                       )}
 
@@ -381,9 +397,13 @@ export default function AssignedPapers() {
         isOpen={confirmOpen}
         onClose={() => { setConfirmOpen(false); setConfirmData(null) }}
         onConfirm={handleConfirmUnassign}
-        title="Unassign Reviewer?"
-        message={`This will remove ${confirmData?.reviewerName ?? 'the reviewer'} from "${confirmData?.journalTitle ?? 'this paper'}" and return it to the assignment queue.`}
-        confirmText="Unassign"
+        title={confirmData?.acceptedAt ? "Force Revoke Assignment?" : "Unassign Reviewer?"}
+        message={
+          confirmData?.acceptedAt
+            ? `⚠️ ${confirmData?.reviewerName ?? 'The reviewer'} has already accepted this assignment! Force revoking will revoke their assignment, send them an email notification, and return "${confirmData?.journalTitle ?? 'this paper'}" to the assignment queue.`
+            : `This will remove ${confirmData?.reviewerName ?? 'the reviewer'} from "${confirmData?.journalTitle ?? 'this paper'}" and return it to the assignment queue.`
+        }
+        confirmText={confirmData?.acceptedAt ? "Force Revoke" : "Unassign"}
         loading={confirmLoading}
         type="danger"
       />

@@ -19,7 +19,7 @@ const rateLimit = require('express-rate-limit');
 const helmet = require('helmet');
 
 const { sendRegisterOTP, verifyRegisterOTP, sendResetOTP, verifyResetOTP, sendEmailChangeOTP, verifyEmailChangeOTP, cancelDeletion } = require('./controllers/authController');
-const { notifyUpload, notifyAssign, notifyUnassignReviewer, notifyReview, notifyDecision, notifyBan, notifyUnban, notifyAccountDeleted, notifyReviewerApproved, notifyReviewerRejected, notifySentForReview, notifyRework, notifyResubmit, notifyPublish, notifyPaperRequest, notifyPaperRequestRejected, notifyPaperDelivery, notifyPaperDeleted, notifyContact, replyContact } = require('./controllers/notifyController');
+const { notifyUpload, notifyAssign, notifyUnassignReviewer, notifyReview, notifyDecision, notifyBan, notifyUnban, notifyAccountDeleted, notifyReviewerApproved, notifyReviewerRejected, notifySentForReview, notifyRework, notifyResubmit, notifyPublish, notifyPaperRequest, notifyPaperRequestRejected, notifyPaperDelivery, notifyPaperDeleted, notifyContact, replyContact, notifyReviewerDeclinedAssignment, notifyForceUnassign } = require('./controllers/notifyController');
 const { resubmitJournal } = require('./controllers/resubmitController');
 const { requireAuth, requireAdmin } = require('./middleware/requireAuth');
 // node-cron removed: does not work on Vercel serverless. The account deletion cron
@@ -180,12 +180,14 @@ app.post('/api/notify/paper-delivery', requireAdmin, notifyPaperDelivery);
 app.post('/api/notify/paper-deleted', requireAdmin, notifyPaperDeleted);
 // delete-account moved here: admin-only because only admin triggers this notification
 app.post('/api/notify/delete-account', requireAdmin, notifyAccountDeleted);
+app.post('/api/notify/force-unassign', requireAdmin, notifyForceUnassign);
 app.post('/api/notify/reply-contact', requireAdmin, replyContact);
 
 // Authenticated-user notification routes (auth + rate-limited to prevent email spam)
 app.post('/api/notify/upload', requireAuth, otpLimiter, notifyUpload);
 app.post('/api/notify/review', requireAuth, otpLimiter, notifyReview);
 app.post('/api/notify/resubmit', requireAuth, otpLimiter, notifyResubmit);
+app.post('/api/notify/reject-assignment', requireAuth, otpLimiter, notifyReviewerDeclinedAssignment);
 
 // Secure Student Actions (require auth but performed by the student themselves)
 app.post('/api/student/resubmit', requireAuth, resubmitJournal);

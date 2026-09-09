@@ -1258,3 +1258,89 @@ REVOKE EXECUTE ON FUNCTION public.get_assigned_journals_for_reviewer() FROM publ
 GRANT EXECUTE ON FUNCTION public.get_assigned_journals_for_reviewer() TO authenticated;
 
 
+-- ============================================================
+-- REVIEWER ACCEPT/REJECT WORKFLOW (2026-09-09)
+-- Adds accepted_at column + RPCs for reviewer response and admin force-unassign
+-- ============================================================
+
+-- 1. Add accepted_at column to assignments (idempotent)
+ALTER TABLE public.assignments ADD COLUMN IF NOT EXISTS accepted_at timestamptz DEFAULT NULL;
+
+-- 2. New RPC: reviewer_respond_to_assignment
+-- Called by the reviewer to accept (accepted_at = now()) or reject (delete row)
+CREATE OR REPLACE FUNCTION public.reviewer_respond_to_assignment(
+  p_assignment_id uuid,
+  p_accept        boolean
+) RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE
+  v_journal_id uuid;
+BEGIN
+  -- Caller must be the reviewer of this assignment
+  SELECT journal_id INTO v_journal_id
+    FROM public.assignments
+   WHERE id = p_assignment_id AND reviewer_id = auth.uid();
+
+  IF v_journal_id IS NULL THEN
+    RAISE EXCEPTION 'Unauthorized: assignment not found or not yours';
+  END IF;
+
+  IF p_accept THEN
+    -- Mark as accepted
+    UPDATE public.assignments SET accepted_at = now() WHERE id = p_assignment_id;
+  ELSE
+    -- Reject: delete assignment and revert journal status to its natural prior state
+    -- (journals that were 'rework' stay 'rework'; all others revert to 'submitted')
+    DELETE FROM public.assignments WHERE id = p_assignment_id;
+    UPDATE public.journals
+       SET status = CASE WHEN status = 'rework' THEN 'rework' ELSE 'submitted' END
+     WHERE id = v_journal_id
+       AND NOT EXISTS (SELECT 1 FROM public.assignments WHERE journal_id = v_journal_id);
+  END IF;
+END;
+$$;
+REVOKE EXECUTE ON FUNCTION public.reviewer_respond_to_assignment(uuid, boolean) FROM public, anon;
+GRANT  EXECUTE ON FUNCTION public.reviewer_respond_to_assignment(uuid, boolean) TO authenticated;
+
+-- 3. Update unassign_reviewer_from_journal to block when reviewer has accepted
+--    Use p_force=true for admin emergency override
+CREATE OR REPLACE FUNCTION public.unassign_reviewer_from_journal(
+  p_journal_id    uuid,
+  p_assignment_id uuid,
+  p_force         boolean DEFAULT false
+) RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE
+  v_accepted_at timestamptz;
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin') THEN
+    RAISE EXCEPTION 'Unauthorized';
+  END IF;
+
+  SELECT accepted_at INTO v_accepted_at
+    FROM public.assignments
+   WHERE id = p_assignment_id AND journal_id = p_journal_id;
+
+  -- Block unassign if reviewer has accepted and force flag is not set
+  IF v_accepted_at IS NOT NULL AND NOT p_force THEN
+    RAISE EXCEPTION 'Reviewer has already accepted this assignment. Use force override to unassign.';
+  END IF;
+
+  DELETE FROM public.assignments WHERE id = p_assignment_id AND journal_id = p_journal_id;
+  IF NOT EXISTS (SELECT 1 FROM public.assignments WHERE journal_id = p_journal_id) THEN
+    UPDATE public.journals SET status = 'submitted' WHERE id = p_journal_id;
+  END IF;
+END;
+$$;
+REVOKE EXECUTE ON FUNCTION public.unassign_reviewer_from_journal(uuid, uuid, boolean) FROM public;
+GRANT  EXECUTE ON FUNCTION public.unassign_reviewer_from_journal(uuid, uuid, boolean) TO authenticated;
+-- Also keep the old 2-arg signature as a convenience wrapper (calls with force=false)
+CREATE OR REPLACE FUNCTION public.unassign_reviewer_from_journal(
+  p_journal_id    uuid,
+  p_assignment_id uuid
+) RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+BEGIN
+  PERFORM public.unassign_reviewer_from_journal(p_journal_id, p_assignment_id, false);
+END;
+$$;
+REVOKE EXECUTE ON FUNCTION public.unassign_reviewer_from_journal(uuid, uuid) FROM public;
+GRANT  EXECUTE ON FUNCTION public.unassign_reviewer_from_journal(uuid, uuid) TO authenticated;
+

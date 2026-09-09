@@ -23,10 +23,10 @@ export default function PaperDetail() {
 
   useEffect(() => {
     if (user || profile) {
-      setForm(prev => ({ 
-        ...prev, 
-        name: profile?.name || prev.name, 
-        email: user?.email || prev.email 
+      setForm(prev => ({
+        ...prev,
+        name: profile?.name || prev.name,
+        email: user?.email || prev.email
       }))
     }
   }, [user, profile])
@@ -51,7 +51,7 @@ export default function PaperDetail() {
 
   const getAuthorsData = (p) => {
     if (!p) return { allNames: '—', correspondingAuthor: null, otherAuthors: [] }
-    
+
     let allAuthors = []
     if (Array.isArray(p.authors) && p.authors.length > 0) {
       allAuthors = p.authors.map(a => typeof a === 'string' ? { name: a, is_corresponding: false } : a)
@@ -62,7 +62,7 @@ export default function PaperDetail() {
     if (allAuthors.length === 0) return { allNames: '—', correspondingAuthor: null, otherAuthors: [] }
 
     const allNames = allAuthors.map(a => a.name).join(', ')
-    
+
     let correspondingAuthor = allAuthors.find(a => a.is_corresponding)
     let otherAuthors = allAuthors.filter(a => !a.is_corresponding)
 
@@ -169,7 +169,7 @@ export default function PaperDetail() {
           {(correspondingAuthor || otherAuthors.length > 0) && (
             <div style={{ marginBottom: '1.5rem' }}>
               <p style={{ fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--muted-foreground)', marginBottom: '0.75rem', fontWeight: 600 }}>Authors</p>
-              
+
               {/* Corresponding Author (Main) */}
               {correspondingAuthor && (
                 <div style={{ marginBottom: '1rem' }}>
@@ -214,11 +214,11 @@ export default function PaperDetail() {
 
       {/* Abstract */}
       <AnimatedSection direction="up" delay={0.15}>
-        <div style={{ 
-          marginBottom: '3rem', 
-          background: 'linear-gradient(to bottom right, var(--card), rgba(255,255,255,0.02))', 
-          border: '1px solid var(--border)', 
-          borderRadius: '1.25rem', 
+        <div style={{
+          marginBottom: '3rem',
+          background: 'linear-gradient(to bottom right, var(--card), rgba(255,255,255,0.02))',
+          border: '1px solid var(--border)',
+          borderRadius: '1.25rem',
           padding: '2.5rem',
           boxShadow: '0 12px 40px rgba(0,0,0,0.03)',
           position: 'relative',
@@ -226,7 +226,7 @@ export default function PaperDetail() {
         }}>
           {/* Subtle decorative accent */}
           <div style={{ position: 'absolute', top: 0, left: 0, width: '4px', height: '100%', background: 'var(--primary)', opacity: 0.8 }} />
-          
+
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', fontSize: '1.35rem', fontWeight: 700, color: 'var(--foreground)', marginBottom: '1.5rem', letterSpacing: '-0.01em' }}>
             <FileText size={22} style={{ color: 'var(--primary)' }} /> Abstract
           </div>
@@ -243,71 +243,71 @@ export default function PaperDetail() {
       {/* Request Full Paper (Only if paper has a volume_number assigned) */}
       {paper.volume_number !== null && (
         <AnimatedSection direction="up" delay={0.2}>
-        <div className="card" style={{ borderTop: '4px solid var(--primary)' }}>
-          <div className="card-header">
-            <div className="card-title">Request Full Paper</div>
-            <div className="card-description">
-              The full article PDF is available upon request. Submit your details below and the editorial board will review your request.
+          <div className="card" style={{ borderTop: '4px solid var(--primary)' }}>
+            <div className="card-header">
+              <div className="card-title">Request Full Paper</div>
+              <div className="card-description">
+                The full article PDF is available upon request. Submit your details below and the editorial board will review your request.
+              </div>
+            </div>
+            <div className="card-content">
+              {submitted ? (
+                <div style={{ textAlign: 'center', padding: '3rem 1rem' }}>
+                  <h3 style={{ fontSize: '1.25rem', marginBottom: '0.75rem', color: 'var(--foreground)' }}>Request Submitted Successfully</h3>
+                  <p style={{ color: 'var(--muted-foreground)', fontSize: '0.95rem' }}>The editorial board will review your request. If approved, the full PDF will be emailed to you.</p>
+                </div>
+              ) : !showForm ? (
+                <div style={{ textAlign: 'center', padding: '1.5rem 0' }}>
+                  <p className="text-muted" style={{ marginBottom: '1rem', fontSize: '0.9rem' }}>
+                    The full PDF is never publicly downloadable. You must request access from the editorial board, who will send it manually via email after review.
+                  </p>
+                  <button className="btn btn-primary" onClick={() => setShowForm(true)}>
+                    Request Full Paper
+                  </button>
+                </div>
+              ) : (
+                <form onSubmit={handleRequestSubmit} className="space-y-4">
+                  {/* HONEYPOT: Visually hidden field to catch spam bots */}
+                  <div style={{ position: 'absolute', left: '-9999px' }} aria-hidden="true">
+                    <label htmlFor="req-website">Website</label>
+                    <input id="req-website" type="text" tabIndex="-1" autoComplete="off"
+                      value={form.website_url} onChange={e => setForm(p => ({ ...p, website_url: e.target.value }))} />
+                  </div>
+
+                  <div className="grid-2">
+                    <div className="form-group">
+                      <label htmlFor="req-name">Your Name <span style={{}}>*</span></label>
+                      <input id="req-name" className="input" placeholder="Full name"
+                        value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} required />
+                    </div>
+                    <div className="form-group">
+                      <label htmlFor="req-email">Email Address <span style={{}}>*</span></label>
+                      <input id="req-email" type="email" className="input" placeholder="your@email.com"
+                        value={form.email} onChange={e => setForm(p => ({ ...p, email: e.target.value }))} required />
+                    </div>
+                  </div>
+                  <div className="form-group">
+                    <label htmlFor="req-affiliation">Institution / Affiliation</label>
+                    <input id="req-affiliation" className="input" placeholder="University, Research Institute, etc."
+                      value={form.affiliation} onChange={e => setForm(p => ({ ...p, affiliation: e.target.value }))} />
+                  </div>
+                  <div className="form-group">
+                    <label htmlFor="req-reason">Reason for Request</label>
+                    <textarea id="req-reason" className="input" style={{ minHeight: '90px', resize: 'vertical' }}
+                      placeholder="Briefly describe your research purpose or reason for requesting the full paper..."
+                      value={form.reason} onChange={e => setForm(p => ({ ...p, reason: e.target.value }))} />
+                  </div>
+                  <div style={{ display: 'flex', gap: '0.75rem' }}>
+                    <button type="submit" className="btn btn-primary" disabled={submitting}>
+                      {submitting ? <><div className="spinner-sm" /> Submitting…</> : 'Submit Request'}
+                    </button>
+                    <button type="button" className="btn btn-outline" onClick={() => setShowForm(false)}>Cancel</button>
+                  </div>
+                </form>
+              )}
             </div>
           </div>
-          <div className="card-content">
-            {submitted ? (
-              <div style={{ textAlign: 'center', padding: '3rem 1rem' }}>
-                <h3 style={{ fontSize: '1.25rem', marginBottom: '0.75rem', color: 'var(--foreground)' }}>Request Submitted Successfully</h3>
-                <p style={{ color: 'var(--muted-foreground)', fontSize: '0.95rem' }}>The editorial board will review your request. If approved, the full PDF will be emailed to you.</p>
-              </div>
-            ) : !showForm ? (
-              <div style={{ textAlign: 'center', padding: '1.5rem 0' }}>
-                <p className="text-muted" style={{ marginBottom: '1rem', fontSize: '0.9rem' }}>
-                  The full PDF is never publicly downloadable. You must request access from the editorial board, who will send it manually via email after review.
-                </p>
-                <button className="btn btn-primary" onClick={() => setShowForm(true)}>
-                  Request Full Paper
-                </button>
-              </div>
-            ) : (
-              <form onSubmit={handleRequestSubmit} className="space-y-4">
-                {/* HONEYPOT: Visually hidden field to catch spam bots */}
-                <div style={{ position: 'absolute', left: '-9999px' }} aria-hidden="true">
-                  <label htmlFor="req-website">Website</label>
-                  <input id="req-website" type="text" tabIndex="-1" autoComplete="off" 
-                    value={form.website_url} onChange={e => setForm(p => ({ ...p, website_url: e.target.value }))} />
-                </div>
-                
-                <div className="grid-2">
-                  <div className="form-group">
-                    <label htmlFor="req-name">Your Name <span style={{ }}>*</span></label>
-                    <input id="req-name" className="input" placeholder="Full name"
-                      value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} required />
-                  </div>
-                  <div className="form-group">
-                    <label htmlFor="req-email">Email Address <span style={{ }}>*</span></label>
-                    <input id="req-email" type="email" className="input" placeholder="your@email.com"
-                      value={form.email} onChange={e => setForm(p => ({ ...p, email: e.target.value }))} required />
-                  </div>
-                </div>
-                <div className="form-group">
-                  <label htmlFor="req-affiliation">Institution / Affiliation</label>
-                  <input id="req-affiliation" className="input" placeholder="University, Research Institute, etc."
-                    value={form.affiliation} onChange={e => setForm(p => ({ ...p, affiliation: e.target.value }))} />
-                </div>
-                <div className="form-group">
-                  <label htmlFor="req-reason">Reason for Request</label>
-                  <textarea id="req-reason" className="input" style={{ minHeight: '90px', resize: 'vertical' }}
-                    placeholder="Briefly describe your research purpose or reason for requesting the full paper..."
-                    value={form.reason} onChange={e => setForm(p => ({ ...p, reason: e.target.value }))} />
-                </div>
-                <div style={{ display: 'flex', gap: '0.75rem' }}>
-                  <button type="submit" className="btn btn-primary" disabled={submitting}>
-                    {submitting ? <><div className="spinner-sm" /> Submitting…</> : 'Submit Request'}
-                  </button>
-                  <button type="button" className="btn btn-outline" onClick={() => setShowForm(false)}>Cancel</button>
-                </div>
-              </form>
-            )}
-          </div>
-        </div>
-      </AnimatedSection>
+        </AnimatedSection>
       )}
     </div>
   )

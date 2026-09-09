@@ -21,6 +21,8 @@ const {
   generateContactNotification,
   generateContactReply,
   generateUnassignNotification,
+  generateReviewerDeclinedAssignmentNotification,
+  generateForceUnassignNotification,
   escHtml
 } = require('../utils/emailTemplates');
 
@@ -582,3 +584,61 @@ exports.replyContact = async (req, res) => {
   
   res.status(emailSent ? 200 : 500).json({ success: emailSent });
 };
+
+// ── Notify admin that reviewer declined an assignment ──────────────────────
+// Called by the reviewer (requireAuth, not requireAdmin)
+exports.notifyReviewerDeclinedAssignment = async (req, res) => {
+  const { journalTitle, reviewerName } = req.body;
+  if (!validateString(journalTitle, 500)) return res.status(400).json({ error: 'Invalid journal title' });
+
+  // Verify caller is an active reviewer
+  const { data: caller } = await supabase.from('profiles').select('role, status, name').eq('id', req.user?.id).single();
+  if (!caller || caller.role !== 'reviewer' || caller.status !== 'active') {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
+
+  const safeReviewerName = esc(reviewerName || caller.name || 'Reviewer');
+  const safeJournalTitle = esc(journalTitle);
+
+  // Email admin
+  const html = generateReviewerDeclinedAssignmentNotification(safeReviewerName, safeJournalTitle);
+  const sent = await sendMail(process.env.EMAIL_USER, `Review Assignment Declined: "${safeJournalTitle}"`, html);
+
+  // In-app notification to all admins
+  await notifyAdminsInApp(
+    'Reviewer Declined Assignment',
+    `${safeReviewerName} declined the review request for "${journalTitle}". Please assign another reviewer.`,
+    '/admin/assign'
+  );
+
+  res.status(sent ? 200 : 500).json({ success: sent });
+};
+
+// ── Notify reviewer that admin force-unassigned them after acceptance ──────
+// Called by admin (requireAdmin)
+exports.notifyForceUnassign = async (req, res) => {
+  if (!await checkAdmin(req.user?.id)) return res.status(403).json({ error: 'Forbidden' });
+  const { reviewerId, reviewerName, journalTitle } = req.body;
+  if (!validateString(journalTitle, 500)) return res.status(400).json({ error: 'Invalid journal title' });
+
+  const reviewerEmail = await getEmailForUser(reviewerId);
+  if (!reviewerEmail) return res.status(404).json({ error: 'Reviewer email not found' });
+
+  const safeReviewerName = esc(reviewerName || 'Reviewer');
+  const safeJournalTitle = esc(journalTitle);
+
+  // Email reviewer
+  const html = generateForceUnassignNotification(safeReviewerName, safeJournalTitle);
+  const sent = await sendMail(reviewerEmail, `Review Assignment Revoked: "${safeJournalTitle}"`, html);
+
+  // In-app notification to the reviewer
+  await insertNotification(
+    reviewerId,
+    'Review Assignment Revoked',
+    `Your accepted review assignment for "${journalTitle}" has been revoked by the editorial team.`,
+    '/reviewer/assigned'
+  );
+
+  res.status(sent ? 200 : 500).json({ success: sent });
+};
+

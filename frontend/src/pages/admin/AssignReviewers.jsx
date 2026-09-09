@@ -101,7 +101,7 @@ export default function AssignReviewers() {
         .limit(200),
       supabase
         .from('assignments')
-        .select('id, journal_id, reviewer_id, profiles(name)')
+        .select('id, journal_id, reviewer_id, accepted_at, profiles(name)')
         .limit(1000),
     ])
 
@@ -185,16 +185,19 @@ export default function AssignReviewers() {
     return true
   }
 
-  async function removeReviewer(journalId, assignmentId, reviewerName, reviewerId, journalTitle) {
+  async function removeReviewer(journalId, assignmentId, reviewerName, reviewerId, journalTitle, acceptedAt) {
+    const isAccepted = Boolean(acceptedAt)
     const { error } = await supabase.rpc('unassign_reviewer_from_journal', {
       p_journal_id: journalId,
-      p_assignment_id: assignmentId
+      p_assignment_id: assignmentId,
+      p_force: isAccepted
     })
     if (error) { toast.error('Failed to unassign reviewer: ' + error.message); return }
 
     let emailFailed = false
     if (reviewerId) {
-      const res = await sendNotification('/api/notify/unassign-reviewer', {
+      const endpoint = isAccepted ? '/api/notify/force-unassign' : '/api/notify/unassign-reviewer'
+      const res = await sendNotification(endpoint, {
         reviewerId,
         reviewerName: reviewerName || 'Reviewer',
         journalTitle: journalTitle || 'Manuscript'
@@ -212,8 +215,8 @@ export default function AssignReviewers() {
     }
   }
 
-  function triggerRemove(journalId, assignmentId, reviewerName, journalTitle, reviewerId) {
-    setConfirmData({ journalId, assignmentId, reviewerName, journalTitle, reviewerId })
+  function triggerRemove(journalId, assignmentId, reviewerName, journalTitle, reviewerId, acceptedAt) {
+    setConfirmData({ journalId, assignmentId, reviewerName, journalTitle, reviewerId, acceptedAt })
     setConfirmOpen(true)
   }
 
@@ -225,7 +228,8 @@ export default function AssignReviewers() {
       confirmData.assignmentId,
       confirmData.reviewerName,
       confirmData.reviewerId,
-      confirmData.journalTitle
+      confirmData.journalTitle,
+      confirmData.acceptedAt
     )
     setConfirmLoading(false)
     setConfirmOpen(false)
@@ -474,7 +478,7 @@ export default function AssignReviewers() {
                             const revWorkload = reviewerWorkloads.counts[a.reviewer_id] ?? 1
                             return (
                               <div key={a.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
                                   <UserCheck size={16} style={{ color: '#16a34a', flexShrink: 0 }} />
                                   <span style={{ fontSize: '0.83rem', color: 'var(--foreground)' }}>
                                     Assigned Reviewer: <strong style={{ color: 'var(--foreground)', fontWeight: 700 }}>{a.profiles?.name ?? '—'}</strong>
@@ -482,16 +486,26 @@ export default function AssignReviewers() {
                                       ({revWorkload} {revWorkload === 1 ? 'paper total' : 'papers total'})
                                     </span>
                                   </span>
+                                  <span style={{
+                                    fontSize: '0.7rem', fontWeight: 700,
+                                    padding: '0.15rem 0.5rem', borderRadius: '9999px',
+                                    background: a.accepted_at ? '#d1fae5' : '#fef3c7',
+                                    color: a.accepted_at ? '#065f46' : '#92400e',
+                                    border: `1px solid ${a.accepted_at ? '#a7f3d0' : '#fde68a'}`,
+                                    marginLeft: '0.35rem'
+                                  }}>
+                                    {a.accepted_at ? '✓ Accepted' : '⏳ Pending Acceptance'}
+                                  </span>
                                 </div>
 
                                 <button
-                                  onClick={() => triggerRemove(j.id, a.id, a.profiles?.name, j.title, a.reviewer_id)}
+                                  onClick={() => triggerRemove(j.id, a.id, a.profiles?.name, j.title, a.reviewer_id, a.accepted_at)}
                                   className="btn btn-outline btn-sm"
                                   style={{ color: '#dc2626', borderColor: '#fca5a5', fontSize: '0.75rem', padding: '0.3rem 0.75rem', display: 'inline-flex', alignItems: 'center', gap: '0.35rem', fontWeight: 600 }}
-                                  title={`Unassign ${a.profiles?.name} from "${j.title}"`}
+                                  title={a.accepted_at ? `Reviewer has accepted. Unassigning will force-revoke their assignment.` : `Unassign ${a.profiles?.name} from "${j.title}"`}
                                 >
                                   <UserMinus size={14} />
-                                  Unassign Reviewer
+                                  {a.accepted_at ? 'Force Unassign' : 'Unassign Reviewer'}
                                 </button>
                               </div>
                             )
@@ -711,9 +725,13 @@ export default function AssignReviewers() {
         isOpen={confirmOpen}
         onClose={() => setConfirmOpen(false)}
         onConfirm={handleConfirmRemove}
-        title="Unassign Reviewer?"
-        message={`Are you sure you want to unassign ${confirmData?.reviewerName ?? 'the reviewer'} from "${confirmData?.journalTitle ?? 'this paper'}"?`}
-        confirmText="Unassign Reviewer"
+        title={confirmData?.acceptedAt ? "Force Revoke Assignment?" : "Unassign Reviewer?"}
+        message={
+          confirmData?.acceptedAt
+            ? `⚠️ ${confirmData?.reviewerName ?? 'The reviewer'} has already accepted this assignment! Force revoking will revoke their assignment, send them an email notification, and return "${confirmData?.journalTitle ?? 'this paper'}" to the assignment queue.`
+            : `Are you sure you want to unassign ${confirmData?.reviewerName ?? 'the reviewer'} from "${confirmData?.journalTitle ?? 'this paper'}"?`
+        }
+        confirmText={confirmData?.acceptedAt ? "Force Revoke" : "Unassign Reviewer"}
         loading={confirmLoading}
         type="danger"
       />

@@ -95,6 +95,7 @@ create table public.assignments (
   id          uuid primary key default gen_random_uuid(),
   journal_id  uuid references public.journals(id) on delete cascade,
   reviewer_id uuid references public.profiles(id) on delete cascade,
+  accepted_at timestamptz default null,
   created_at  timestamptz default now(),
   unique (journal_id, reviewer_id)
 );
