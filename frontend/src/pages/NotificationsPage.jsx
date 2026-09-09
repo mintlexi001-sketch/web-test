@@ -124,9 +124,10 @@ export default function NotificationsPage() {
     setSendingReply(true)
     try {
       const res = await sendNotification('/api/notify/reply-contact', {
-        recipientEmail: replyingTo.metadata.sender_email,
-        originalSubject: replyingTo.metadata.subject,
-        originalMessage: replyingTo.metadata.full_message,
+        notificationId: replyingTo.id,
+        recipientEmail: replyingTo.metadata?.sender_email,
+        originalSubject: replyingTo.metadata?.subject,
+        originalMessage: replyingTo.metadata?.full_message,
         replyMessage: replyText
       })
       

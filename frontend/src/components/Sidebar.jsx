@@ -53,7 +53,7 @@ function SidebarContent({ role, onClose }) {
       const fetchAllCounts = async () => {
         try {
           const [journalsRes, profilesRes, requestsRes] = await Promise.all([
-            supabase.from('journals').select('id, status, reviews(id)'),
+            supabase.from('journals').select('id, status, reviews(id)').limit(500),
             supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
             supabase.from('paper_requests').select('id', { count: 'exact', head: true }).eq('status', 'pending')
           ]);

@@ -608,8 +608,13 @@ exports.notifyPaperDelivery = async (req, res) => {
 
 // ── Contact Form (Public) ───────────────────────────────────────────────
 exports.notifyContact = async (req, res) => {
-  const { name, email, subject, message } = req.body;
+  const { name, email, subject, message, website_url } = req.body;
   
+  // Honeypot check: automated spammers fill this hidden field
+  if (website_url) {
+    return res.status(400).json({ error: 'Spam detected' });
+  }
+
   if (!name || !email || !subject || !message) {
     return res.status(400).json({ error: 'Missing required fields' });
   }
@@ -642,24 +647,49 @@ exports.notifyContact = async (req, res) => {
 // ── Admin Reply to Contact Form ─────────────────────────────────────────
 exports.replyContact = async (req, res) => {
   if (!await checkAdmin(req.user?.id)) return res.status(403).json({ error: 'Forbidden' });
-  const { recipientEmail, originalSubject, originalMessage, replyMessage } = req.body;
+  const { notificationId, recipientEmail, originalSubject, originalMessage, replyMessage } = req.body;
 
-  if (!recipientEmail || !replyMessage) {
-    return res.status(400).json({ error: 'Missing recipient email or reply message' });
+  if (!replyMessage) {
+    return res.status(400).json({ error: 'Missing reply message' });
   }
 
-  const { data: matchingNotif } = await supabase
-    .from('notifications')
-    .select('id')
-    .eq('metadata->>sender_email', recipientEmail)
-    .limit(1)
-    .maybeSingle();
-  if (!matchingNotif) {
-    return res.status(403).json({ error: 'No contact message found for this recipient.' });
+  let targetEmail = recipientEmail;
+  let targetSubject = originalSubject;
+  let targetMessage = originalMessage;
+
+  if (notificationId) {
+    const { data: notif } = await supabase
+      .from('notifications')
+      .select('id, metadata')
+      .eq('id', notificationId)
+      .maybeSingle();
+
+    if (!notif || notif.metadata?.type !== 'contact') {
+      return res.status(404).json({ error: 'Matching contact message record not found.' });
+    }
+
+    targetEmail = notif.metadata?.sender_email || recipientEmail;
+    targetSubject = notif.metadata?.subject || originalSubject;
+    targetMessage = notif.metadata?.full_message || originalMessage;
+  } else {
+    // Fallback: verify that a contact notification matching the email exists
+    const { data: matchingNotif } = await supabase
+      .from('notifications')
+      .select('id')
+      .eq('metadata->>sender_email', recipientEmail)
+      .limit(1)
+      .maybeSingle();
+    if (!matchingNotif) {
+      return res.status(403).json({ error: 'No contact message found for this recipient.' });
+    }
   }
-  
-  const html = generateContactReply(esc(originalSubject), esc(originalMessage), esc(replyMessage));
-  const emailSent = await sendMail(recipientEmail, `Re: ${esc(originalSubject || 'Your Message to Science & Society')}`, html);
+
+  if (!targetEmail || !validateEmail(targetEmail)) {
+    return res.status(400).json({ error: 'Invalid recipient email' });
+  }
+
+  const html = generateContactReply(esc(targetSubject), esc(targetMessage), esc(replyMessage));
+  const emailSent = await sendMail(targetEmail, `Re: ${esc(targetSubject || 'Your Message to Science & Society')}`, html);
   
   res.status(emailSent ? 200 : 500).json({ success: emailSent });
 };

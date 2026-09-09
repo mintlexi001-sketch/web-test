@@ -261,7 +261,7 @@ export function ReviewJournal() {
   async function fetchJournal() {
     setLoading(true)
     const [journalRes, reviewRes, assignmentRes] = await Promise.all([
-      supabase.from('journals').select('*').eq('id', id).single(),
+      supabase.from('journals').select('id, title, abstract, status, review_level, resubmission_count, created_at, file_url, keywords').eq('id', id).single(),
       supabase.from('reviews').select('*').eq('journal_id', id).eq('reviewer_id', user?.id).maybeSingle(),
       supabase.from('assignments').select('id, accepted_at').eq('journal_id', id).eq('reviewer_id', user?.id).maybeSingle(),
     ])

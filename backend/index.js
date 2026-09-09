@@ -126,9 +126,15 @@ app.use((err, req, res, next) => {
 app.use(express.json({ limit: '1mb' }));
 
 // Health Check Endpoint (Required for Railway/Render/Vercel)
-// API-005: Do not expose internal timing (uptime) in the response.
-app.get('/health', (req, res) => {
-  res.status(200).json({ status: 'ok' });
+app.get('/health', async (req, res) => {
+  try {
+    const { error } = await supabase.from('profiles').select('id').limit(1);
+    if (error) throw error;
+    res.status(200).json({ status: 'ok', database: 'connected' });
+  } catch (err) {
+    console.error('Health Check DB error:', err.message);
+    res.status(503).json({ status: 'degraded', database: 'disconnected' });
+  }
 });
 
 // Rate limiter for OTP & public endpoints to prevent brute force & spam
@@ -298,7 +304,7 @@ if (process.env.SENTRY_DSN) {
 }
 
 app.use((err, req, res, next) => {
-  console.error('Unhandled Error:', err.message);
+  console.error('Unhandled Error:', err.stack || err);
   res.status(500).json({ error: 'Internal Server Error' });
 });
 
@@ -321,5 +327,14 @@ if (process.env.VERCEL !== '1' && process.env.NODE_ENV !== 'test') {
     } else {
       console.error('Server Error:', err);
     }
+  });
+
+  process.on('SIGTERM', () => {
+    console.log('SIGTERM signal received: closing HTTP server...');
+    server.close(() => {
+      console.log('HTTP server closed.');
+      process.exit(0);
+    });
+    setTimeout(() => process.exit(1), 10000).unref();
   });
 }
