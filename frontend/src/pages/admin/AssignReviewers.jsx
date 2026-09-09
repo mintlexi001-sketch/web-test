@@ -1,8 +1,8 @@
 import { useEffect, useState, useMemo } from 'react'
 import {
   Search, ChevronDown, ChevronUp, RefreshCw, Users, FileText,
-  AlertCircle, CheckCircle, RotateCcw, UserCheck, BookOpen,
-  Zap, UserMinus, Calendar, User
+  AlertCircle, CheckCircle, RotateCcw, UserCheck,
+  Zap, UserMinus
 } from 'lucide-react'
 import { useToast } from '../../components/Toast'
 import { supabase } from '../../lib/supabase'

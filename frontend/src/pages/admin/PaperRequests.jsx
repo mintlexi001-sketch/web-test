@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Mail, Check, X, RefreshCw, ChevronDown, ChevronUp, Send, FileText, User, Calendar, Tag } from 'lucide-react'
+import { Mail, Check, X, RefreshCw, ChevronDown, ChevronUp, Send, FileText, User, Calendar } from 'lucide-react'
 import { useToast } from '../../components/Toast'
 import { supabase } from '../../lib/supabase'
 import { sendNotification } from '../../lib/api'

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import {
   BookOpen, LayoutDashboard, Upload, FileText, Users,
-  Settings, LogOut, Menu, X, ClipboardList, UserCog, Home, BookCheck, Inbox, Layers, UserCheck
+  Settings, LogOut, Menu, ClipboardList, UserCog, Home, BookCheck, Inbox, Layers, UserCheck
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'

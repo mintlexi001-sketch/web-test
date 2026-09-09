@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Search, Trash2, RefreshCw, CheckCircle2, XCircle, Clock, ShieldCheck, ShieldOff, ShieldAlert, UserCog, Settings, ChevronDown, MoreVertical, UserCheck } from 'lucide-react'
+import { Search, Trash2, RefreshCw, CheckCircle2, XCircle, Clock, ShieldCheck, ShieldOff, ShieldAlert, Settings, UserCheck } from 'lucide-react'
 import { useToast } from '../../components/Toast'
 import { supabase } from '../../lib/supabase'
 import ConfirmModal from '../../components/ConfirmModal'
