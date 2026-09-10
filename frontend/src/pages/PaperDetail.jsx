@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { Calendar, Users, FileText, AlertCircle } from 'lucide-react'
+import { Calendar, Users, FileText, AlertCircle, Eye, Quote, BookmarkCheck } from 'lucide-react'
 import { supabase } from '../lib/supabase'
-import { sendNotification } from '../lib/api'
+import { sendNotification, API_BASE } from '../lib/api'
 import { AnimatedSection } from '../components/ui/AnimatedSection'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../components/Toast'
+import CitationModal from '../components/CitationModal'
 
 export default function PaperDetail() {
   const toast = useToast()
@@ -14,6 +15,7 @@ export default function PaperDetail() {
   const [paper, setPaper] = useState(null)
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
+  const [citationModalOpen, setCitationModalOpen] = useState(false)
 
   // Request form state
   const [showForm, setShowForm] = useState(false)
@@ -35,7 +37,7 @@ export default function PaperDetail() {
     async function fetchPaper() {
       const { data, error } = await supabase
         .from('published_issues')
-        .select('id, title, abstract, keywords, authors, author_name, volume_number, issue_number, published_at, created_at')
+        .select('*')
         .eq('id', id)
         .single()
 
@@ -43,6 +45,14 @@ export default function PaperDetail() {
         setNotFound(true)
       } else {
         setPaper(data)
+
+        // Session-throttled atomic view count tracking
+        const storageKey = `viewed_paper_${id}`
+        if (!sessionStorage.getItem(storageKey)) {
+          sessionStorage.setItem(storageKey, '1')
+          fetch(`${API_BASE}/api/metrics/paper-view/${id}`, { method: 'POST' }).catch(() => {})
+          setPaper(prev => prev ? { ...prev, views_count: (prev.views_count || 0) + 1 } : prev)
+        }
       }
       setLoading(false)
     }
@@ -153,16 +163,43 @@ export default function PaperDetail() {
             {paper.title}
           </h1>
 
-          {/* Metadata pills */}
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', marginBottom: '1.5rem' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '1.05rem', color: 'var(--muted-foreground)', background: 'var(--muted)', padding: '0.5rem 1rem', borderRadius: '999px', border: '1px solid var(--border)' }}>
-              <Users size={15} />
+          {/* Metadata & Metrics pills */}
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', marginBottom: '1.5rem', alignItems: 'center' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.95rem', color: 'var(--muted-foreground)', background: 'var(--muted)', padding: '0.45rem 0.9rem', borderRadius: '999px', border: '1px solid var(--border)' }}>
+              <Users size={15} style={{ color: 'var(--primary)' }} />
               <span style={{ fontWeight: 500, color: 'var(--foreground)' }}>{correspondingAuthor ? correspondingAuthor.name : 'Unknown Author'}</span>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '1.05rem', color: 'var(--muted-foreground)', background: 'var(--muted)', padding: '0.5rem 1rem', borderRadius: '999px', border: '1px solid var(--border)' }}>
-              <Calendar size={15} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.95rem', color: 'var(--muted-foreground)', background: 'var(--muted)', padding: '0.45rem 0.9rem', borderRadius: '999px', border: '1px solid var(--border)' }}>
+              <Calendar size={15} style={{ color: 'var(--primary)' }} />
               <span style={{ fontWeight: 500, color: 'var(--foreground)' }}>Published {new Date(publishDate).toLocaleDateString('en-IN', { year: 'numeric', month: 'long', day: 'numeric' })}</span>
             </div>
+
+            {/* Views Metric */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.95rem', color: 'var(--foreground)', background: 'color-mix(in srgb, var(--primary) 10%, transparent)', border: '1px solid color-mix(in srgb, var(--primary) 25%, transparent)', padding: '0.45rem 0.9rem', borderRadius: '999px' }}>
+              <Eye size={15} style={{ color: 'var(--primary)' }} />
+              <span style={{ fontWeight: 700 }}>{paper.views_count || 0}</span>
+              <span style={{ color: 'var(--muted-foreground)', fontSize: '0.85rem' }}>Views</span>
+            </div>
+
+            {/* Citations Metric */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.95rem', color: 'var(--foreground)', background: 'color-mix(in srgb, var(--gold, #d97706) 12%, transparent)', border: '1px solid color-mix(in srgb, var(--gold, #d97706) 30%, transparent)', padding: '0.45rem 0.9rem', borderRadius: '999px' }}>
+              <Quote size={15} style={{ color: 'var(--gold, #d97706)' }} />
+              <span style={{ fontWeight: 700 }}>{paper.citations_count || 0}</span>
+              <span style={{ color: 'var(--muted-foreground)', fontSize: '0.85rem' }}>Citations</span>
+            </div>
+
+            {/* Cite Paper Button */}
+            <button
+              onClick={() => setCitationModalOpen(true)}
+              className="btn btn-outline btn-sm"
+              style={{
+                borderRadius: '999px', fontSize: '0.88rem', fontWeight: 600,
+                display: 'inline-flex', alignItems: 'center', gap: '0.35rem',
+                borderColor: 'var(--primary)', color: 'var(--primary)', marginLeft: 'auto'
+              }}
+            >
+              <Quote size={14} /> Cite Paper
+            </button>
           </div>
 
           {/* Authors list */}
@@ -309,6 +346,13 @@ export default function PaperDetail() {
           </div>
         </AnimatedSection>
       )}
+
+      {/* Citation Generator Modal */}
+      <CitationModal
+        isOpen={citationModalOpen}
+        onClose={() => setCitationModalOpen(false)}
+        paper={paper}
+      />
     </div>
   )
 }

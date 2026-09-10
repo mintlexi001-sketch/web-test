@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { BookOpen, Calendar, Users, ChevronRight, X, FileText } from 'lucide-react'
+import { BookOpen, Calendar, Users, ChevronRight, X, FileText, Eye, Quote } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { AnimatedSection } from '../components/ui/AnimatedSection'
 
@@ -109,13 +109,19 @@ function PaperCard({ paper, index }) {
         </Link>
 
         {/* Meta */}
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', marginBottom: '0.85rem' }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.85rem', marginBottom: '0.85rem', alignItems: 'center' }}>
           <span style={{ fontSize: '0.82rem', color: 'var(--muted-foreground)', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
             <Users size={13} style={{ color: 'var(--primary)', opacity: 0.7 }} /> {getCorrespondingAuthorName(paper)}
           </span>
           <span style={{ fontSize: '0.82rem', color: 'var(--muted-foreground)', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
             <Calendar size={13} style={{ color: 'var(--primary)', opacity: 0.7 }} />
             {new Date(paper.published_at || paper.created_at).toLocaleDateString('en-IN', { year: 'numeric', month: 'long' })}
+          </span>
+          <span style={{ fontSize: '0.8rem', color: 'var(--muted-foreground)', display: 'flex', alignItems: 'center', gap: '0.25rem', marginLeft: 'auto' }}>
+            <Eye size={13} style={{ color: 'var(--primary)' }} /> {paper.views_count || 0} views
+          </span>
+          <span style={{ fontSize: '0.8rem', color: 'var(--muted-foreground)', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+            <Quote size={13} style={{ color: 'var(--gold, #d97706)' }} /> {paper.citations_count || 0} citations
           </span>
         </div>
 
@@ -502,7 +508,7 @@ export default function PublishedPapers() {
 
     let query = supabase
       .from('published_issues')
-      .select('id, title, abstract, keywords, authors, author_name, volume_number, issue_number, published_at, created_at')
+      .select('*')
       .order('published_at', { ascending: false, nullsFirst: false })
 
     // Server-side global search

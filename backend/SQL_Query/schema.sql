@@ -87,6 +87,8 @@ create table public.journals (
   volume_number  text,
   issue_number   text,
   published_at   timestamptz,
+  views_count    int not null default 0,
+  citations_count int not null default 0,
   created_at   timestamptz default now()
 );
 

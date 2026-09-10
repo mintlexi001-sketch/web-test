@@ -173,6 +173,30 @@ app.post('/api/auth/cancel-deletion', requireAuth, cancelDeletion);
 app.post('/api/notify/paper-request', otpLimiter, notifyPaperRequest);
 app.post('/api/notify/contact', otpLimiter, notifyContact);
 
+// Metrics Route
+app.post('/api/metrics/paper-view/:id', async (req, res) => {
+  try {
+    const journalId = req.params.id;
+    if (!journalId || typeof journalId !== 'string') {
+      return res.status(400).json({ error: 'Invalid journal ID' });
+    }
+
+    const { error } = await supabase.rpc('increment_paper_views', { p_journal_id: journalId });
+    if (error) {
+      // Fallback update if RPC is not available in environment
+      const { data: current } = await supabase.from('journals').select('views_count').eq('id', journalId).single();
+      if (current) {
+        await supabase.from('journals').update({ views_count: (current.views_count || 0) + 1 }).eq('id', journalId);
+      }
+    }
+
+    res.status(200).json({ success: true });
+  } catch (err) {
+    console.error('Error incrementing paper view:', err);
+    res.status(500).json({ error: 'Failed to record paper view' });
+  }
+});
+
 // Notification Routes (Protected)
 app.use('/api/notify', requireAuth);
 
