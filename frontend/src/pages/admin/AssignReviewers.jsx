@@ -440,8 +440,8 @@ export default function AssignReviewers() {
               let shadow = 'none'
 
               if (isSelected) { borderColor = 'var(--primary)'; shadow = `0 0 0 3px var(--primary)22` }
-              else if (isReworked && isUnassigned) { borderColor = '#7c3aed66'; bgColor = '#faf5ff' }
-              else if (isUnassigned) { borderColor = '#dc262644' }
+              else if (isReworked && isUnassigned) { borderColor = 'color-mix(in srgb, #a78bfa 50%, var(--border))'; bgColor = 'color-mix(in srgb, #a78bfa 8%, var(--card))' }
+              else if (isUnassigned) { borderColor = 'color-mix(in srgb, #ef4444 35%, var(--border))' }
 
               return (
                 <div
@@ -462,17 +462,35 @@ export default function AssignReviewers() {
                             {j.title}
                           </h3>
                           {isReworked && (
-                            <span style={{ background: '#ede9fe', color: '#6d28d9', border: '1px solid #ddd6fe', borderRadius: '9999px', padding: '0.12rem 0.5rem', fontSize: '0.65rem', fontWeight: 700, whiteSpace: 'nowrap' }}>
+                            <span style={{
+                              background: 'color-mix(in srgb, #a78bfa 18%, transparent)',
+                              color: '#a78bfa',
+                              border: '1px solid color-mix(in srgb, #a78bfa 35%, transparent)',
+                              borderRadius: '9999px', padding: '0.12rem 0.5rem',
+                              fontSize: '0.65rem', fontWeight: 700, whiteSpace: 'nowrap'
+                            }}>
                               Revision #{j.resubmission_count}
                             </span>
                           )}
                           {isUnassigned && !isReworked && (
-                            <span style={{ background: '#fee2e2', color: '#b91c1c', borderRadius: '9999px', padding: '0.12rem 0.5rem', fontSize: '0.65rem', fontWeight: 700, whiteSpace: 'nowrap' }}>
+                            <span style={{
+                              background: 'color-mix(in srgb, #ef4444 18%, transparent)',
+                              color: '#f87171',
+                              border: '1px solid color-mix(in srgb, #ef4444 35%, transparent)',
+                              borderRadius: '9999px', padding: '0.12rem 0.5rem',
+                              fontSize: '0.65rem', fontWeight: 700, whiteSpace: 'nowrap'
+                            }}>
                               Needs Reviewer
                             </span>
                           )}
                           {!isUnassigned && (
-                            <span style={{ background: '#d1fae5', color: '#065f46', borderRadius: '9999px', padding: '0.12rem 0.5rem', fontSize: '0.65rem', fontWeight: 700, whiteSpace: 'nowrap' }}>
+                            <span style={{
+                              background: 'color-mix(in srgb, #10b981 18%, transparent)',
+                              color: '#34d399',
+                              border: '1px solid color-mix(in srgb, #10b981 35%, transparent)',
+                              borderRadius: '9999px', padding: '0.12rem 0.5rem',
+                              fontSize: '0.65rem', fontWeight: 700, whiteSpace: 'nowrap'
+                            }}>
                               Assigned ✓
                             </span>
                           )}
@@ -579,7 +597,9 @@ export default function AssignReviewers() {
                                 onClick={() => assignReviewer(j.id, prevReviewerObj)}
                                 style={{
                                   display: 'inline-flex', alignItems: 'center', gap: '0.3rem',
-                                  background: '#ede9fe', color: '#6d28d9', border: '1px solid #ddd6fe',
+                                  background: 'color-mix(in srgb, #a78bfa 18%, transparent)',
+                                  color: '#a78bfa',
+                                  border: '1px solid color-mix(in srgb, #a78bfa 35%, transparent)',
                                   borderRadius: '0.375rem', padding: '0.2rem 0.55rem', fontSize: '0.7rem', fontWeight: 700,
                                   cursor: 'pointer', transition: 'all 0.15s ease',
                                 }}
@@ -595,7 +615,9 @@ export default function AssignReviewers() {
                                 onClick={() => assignReviewer(j.id, leastLoadedReviewer)}
                                 style={{
                                   display: 'inline-flex', alignItems: 'center', gap: '0.3rem',
-                                  background: '#d1fae5', color: '#065f46', border: '1px solid #a7f3d0',
+                                  background: 'color-mix(in srgb, #10b981 18%, transparent)',
+                                  color: '#34d399',
+                                  border: '1px solid color-mix(in srgb, #10b981 35%, transparent)',
                                   borderRadius: '0.375rem', padding: '0.2rem 0.55rem', fontSize: '0.7rem', fontWeight: 700,
                                   cursor: 'pointer', transition: 'all 0.15s ease',
                                 }}
@@ -654,18 +676,22 @@ export default function AssignReviewers() {
                         )}
 
                         {isReworked && (j.prev_admin_comments || j.prev_reviewer_comments) && (
-                          <div style={{ background: '#faf5ff', border: '1px solid #e9d5ff', borderRadius: '0.625rem', padding: '0.85rem' }}>
-                            <p style={{ fontSize: '0.68rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: '#7c3aed', marginBottom: '0.5rem' }}>Previous Round Feedback</p>
+                          <div style={{
+                            background: 'color-mix(in srgb, #a78bfa 10%, var(--card))',
+                            border: '1px solid color-mix(in srgb, #a78bfa 30%, transparent)',
+                            borderRadius: '0.625rem', padding: '0.85rem'
+                          }}>
+                            <p style={{ fontSize: '0.68rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: '#a78bfa', marginBottom: '0.5rem' }}>Previous Round Feedback</p>
                             {j.prev_admin_comments && (
-                            <div style={{ marginBottom: '0.5rem' }}>
-                                <p style={{ fontSize: '0.7rem', color: '#6d28d9', fontWeight: 700, marginBottom: '0.15rem' }}>Editor's Comments</p>
-                                <p style={{ fontSize: '0.8rem', color: '#4c1d95', lineHeight: 1.5, whiteSpace: 'pre-wrap', margin: 0 }}>{j.prev_admin_comments}</p>
+                              <div style={{ marginBottom: '0.5rem' }}>
+                                <p style={{ fontSize: '0.7rem', color: '#c4b5fd', fontWeight: 700, marginBottom: '0.15rem' }}>Editor's Comments</p>
+                                <p style={{ fontSize: '0.8rem', color: 'var(--foreground)', lineHeight: 1.5, whiteSpace: 'pre-wrap', margin: 0 }}>{j.prev_admin_comments}</p>
                               </div>
                             )}
                             {j.prev_reviewer_comments && (
                               <div>
-                                <p style={{ fontSize: '0.7rem', color: '#6d28d9', fontWeight: 700, marginBottom: '0.15rem' }}>Reviewer's Comments</p>
-                                <p style={{ fontSize: '0.8rem', color: '#4c1d95', lineHeight: 1.5, whiteSpace: 'pre-wrap', maxHeight: '120px', overflowY: 'auto', margin: 0 }}>{j.prev_reviewer_comments}</p>
+                                <p style={{ fontSize: '0.7rem', color: '#c4b5fd', fontWeight: 700, marginBottom: '0.15rem' }}>Reviewer's Comments</p>
+                                <p style={{ fontSize: '0.8rem', color: 'var(--foreground)', lineHeight: 1.5, whiteSpace: 'pre-wrap', maxHeight: '120px', overflowY: 'auto', margin: 0 }}>{j.prev_reviewer_comments}</p>
                               </div>
                             )}
                           </div>
@@ -724,12 +750,13 @@ export default function AssignReviewers() {
                             {r.name}
                           </h3>
                           <span style={{
-                            fontSize: '0.65rem', fontWeight: 700, color: '#15803d',
-                            background: '#d1fae5', border: '1px solid #a7f3d0',
+                            fontSize: '0.65rem', fontWeight: 700, color: '#34d399',
+                            background: 'color-mix(in srgb, #10b981 16%, transparent)',
+                            border: '1px solid color-mix(in srgb, #10b981 35%, transparent)',
                             padding: '0.08rem 0.45rem', borderRadius: '9999px',
                             display: 'inline-flex', alignItems: 'center', gap: '0.25rem', whiteSpace: 'nowrap'
                           }}>
-                            <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#16a34a' }} />
+                            <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#34d399' }} />
                             Active Reviewer
                           </span>
                         </div>
@@ -818,10 +845,10 @@ export default function AssignReviewers() {
                               </span>
                               <span style={{
                                 fontSize: '0.64rem', fontWeight: 700,
-                                padding: '0.08rem 0.4rem', borderRadius: '9999px',
-                                background: ap.acceptedAt ? '#d1fae5' : '#fef3c7',
-                                color: ap.acceptedAt ? '#065f46' : '#92400e',
-                                border: `1px solid ${ap.acceptedAt ? '#a7f3d0' : '#fde68a'}`
+                                padding: '0.08rem 0.45rem', borderRadius: '9999px',
+                                background: ap.acceptedAt ? 'color-mix(in srgb, #10b981 16%, transparent)' : 'color-mix(in srgb, #f59e0b 16%, transparent)',
+                                color: ap.acceptedAt ? '#34d399' : '#fbbf24',
+                                border: `1px solid ${ap.acceptedAt ? 'color-mix(in srgb, #10b981 35%, transparent)' : 'color-mix(in srgb, #f59e0b 35%, transparent)'}`
                               }}>
                                 {ap.acceptedAt ? '✓ Accepted' : '⏳ Pending'}
                               </span>
@@ -832,8 +859,10 @@ export default function AssignReviewers() {
                             onClick={() => triggerRemove(ap.journalId, ap.assignmentId, r.name, ap.title, r.id, ap.acceptedAt)}
                             className="btn btn-outline btn-sm"
                             style={{
-                              padding: '0.28rem 0.65rem', fontSize: '0.72rem', color: '#dc2626', borderColor: '#fca5a5',
-                              background: '#fff5f5', display: 'inline-flex', alignItems: 'center', gap: '0.3rem',
+                              padding: '0.28rem 0.65rem', fontSize: '0.72rem', color: '#f87171',
+                              borderColor: 'color-mix(in srgb, #ef4444 35%, transparent)',
+                              background: 'color-mix(in srgb, #ef4444 12%, transparent)',
+                              display: 'inline-flex', alignItems: 'center', gap: '0.3rem',
                               fontWeight: 600, flexShrink: 0, borderRadius: '0.375rem'
                             }}
                             title={ap.acceptedAt ? `Force revoke assignment of "${ap.title}"` : `Unassign ${r.name} from "${ap.title}"`}

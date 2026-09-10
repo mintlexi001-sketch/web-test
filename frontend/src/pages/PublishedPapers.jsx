@@ -319,20 +319,24 @@ function VolumeGrid({ volumes, onSelectIssue }) {
                   width: '80px', height: '80px', borderRadius: '50%',
                   background: 'rgba(255,255,255,0.08)',
                 }} />
-                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '0.75rem', position: 'relative' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', position: 'relative' }}>
                   <div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.3rem' }}>
-                      <span style={{ fontSize: '0.72rem', fontWeight: 800, color: '#fef08a', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.2rem' }}>
+                      <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#fef08a', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
                         {volKey === 'Articles in Press' ? 'Upcoming' : 'Volume'}
                       </span>
                     </div>
-                    <h3 style={{ fontSize: '1.35rem', fontWeight: 800, color: '#ffffff', margin: 0, lineHeight: 1.2 }}>{volKey}</h3>
+                    <h3 style={{ fontSize: '2.1rem', fontWeight: 900, color: '#ffffff', margin: 0, lineHeight: 1.1, letterSpacing: '-0.02em' }}>{volKey}</h3>
                   </div>
                   <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                    <p style={{ fontSize: '1.5rem', fontWeight: 800, color: '#ffffff', margin: 0, lineHeight: 1 }}>{totalPapers}</p>
-                    <p style={{ fontSize: '0.72rem', fontWeight: 700, color: '#fef08a', margin: 0, marginTop: '0.15rem' }}>
-                      paper{totalPapers !== 1 ? 's' : ''}
-                    </p>
+                    <span style={{
+                      fontSize: '0.82rem', fontWeight: 700, color: '#ffffff',
+                      background: 'rgba(255,255,255,0.18)', border: '1px solid rgba(255,255,255,0.25)',
+                      padding: '0.3rem 0.75rem', borderRadius: '999px', display: 'inline-block',
+                      letterSpacing: '0.02em'
+                    }}>
+                      {totalPapers} paper{totalPapers !== 1 ? 's' : ''}
+                    </span>
                   </div>
                 </div>
               </div>
@@ -347,11 +351,7 @@ function VolumeGrid({ volumes, onSelectIssue }) {
                 flex: 1,
                 minHeight: '140px',
               }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.2rem' }}>
-                  <p style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--primary)', textTransform: 'uppercase', letterSpacing: '0.08em', margin: 0 }}>
-                    Issues
-                  </p>
-                </div>
+
 
                 {issueKeys.map((issKey) => {
                   const iss = vol.issues[issKey]
@@ -411,12 +411,12 @@ function VolumeGrid({ volumes, onSelectIssue }) {
                         </span>
                       </div>
                       <span style={{
-                        fontSize: '0.78rem',
+                        fontSize: '0.68rem',
                         fontWeight: 700,
-                        color: 'var(--foreground)',
+                        color: 'var(--muted-foreground)',
                         background: 'var(--card)',
                         border: '1px solid var(--border)',
-                        padding: '0.3rem 0.75rem',
+                        padding: '0.2rem 0.55rem',
                         borderRadius: '999px',
                         whiteSpace: 'nowrap',
                         flexShrink: 0,
