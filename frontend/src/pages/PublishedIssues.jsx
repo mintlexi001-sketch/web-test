@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Search, X } from 'lucide-react'
+import { Search, X, Eye, Quote } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { sendNotification } from '../lib/api'
 import { useToast } from '../components/Toast'
@@ -159,9 +159,19 @@ export default function PublishedIssues() {
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem', marginBottom: '0.5rem' }}>
                       <h2 className="card-title" style={{ fontSize: '1.25rem', lineHeight: 1.3 }}>{issue.title}</h2>
                     </div>
-                    <p className="text-sm text-muted">
-                      By <span className="font-medium text-foreground">{issue.author_name || 'Anonymous Researcher'}</span> • {new Date(issue.created_at).toLocaleDateString()}
-                    </p>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', marginTop: '0.4rem' }}>
+                      <p className="text-sm text-muted" style={{ margin: 0 }}>
+                        By <span className="font-medium text-foreground">{issue.author_name || 'Anonymous Researcher'}</span> • {new Date(issue.created_at).toLocaleDateString()}
+                      </p>
+                      <div style={{ display: 'flex', gap: '0.65rem', alignItems: 'center' }}>
+                        <span style={{ fontSize: '0.78rem', color: 'var(--muted-foreground)', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                          <Eye size={13} style={{ color: 'var(--primary)' }} /> {issue.views_count || 0} views
+                        </span>
+                        <span style={{ fontSize: '0.78rem', color: 'var(--muted-foreground)', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                          <Quote size={13} style={{ color: 'var(--gold, #d97706)' }} /> {issue.citations_count || 0} citations
+                        </span>
+                      </div>
+                    </div>
                   </div>
                   <div className="card-content" style={{ flex: 1 }}>
                     {issue.abstract?.startsWith('http') ? (
