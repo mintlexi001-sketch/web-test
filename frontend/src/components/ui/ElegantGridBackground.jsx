@@ -55,7 +55,7 @@ export function ElegantGridBackground() {
     return (
       <div style={{
         position: 'fixed', inset: 0, zIndex: -1,
-        background: 'var(--bg)', overflow: 'hidden',
+        background: 'var(--background)', overflow: 'hidden',
         pointerEvents: 'none',
       }}>
         {/* Static Background Base */}

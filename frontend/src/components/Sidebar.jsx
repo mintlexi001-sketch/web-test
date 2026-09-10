@@ -63,7 +63,7 @@ function SidebarContent({ role, onClose }) {
           if (journalsRes.data) {
             const data = journalsRes.data;
             setForReviewCount(data.filter(j => j.reviews && j.reviews.length > 0 && j.status === 'under_review').length);
-            setForAssignCount(data.filter(j => j.status === 'pending' || j.status === 'submitted').length);
+            setForAssignCount(data.filter(j => ['submitted', 'pending', 'rework', 'revision_required'].includes(j.status)).length);
             setAcceptedCount(data.filter(j => j.status === 'accepted').length);
             setAssignedCount(data.filter(j => j.status === 'under_review').length);
           }

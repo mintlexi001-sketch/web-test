@@ -73,7 +73,7 @@ const guidelineCards = [
         <p>All references should be cited in the text using numbers in square brackets.</p>
         <p>References should be listed consecutively.</p>
         <p className="font-semibold mb-1" style={{ color: 'var(--foreground)' }}>Example formats:</p>
-        <div style={{ backgroundColor: 'var(--bg)', padding: '0.75rem', borderRadius: '0.25rem', fontSize: '0.8rem', border: '1px solid var(--border)' }}>
+        <div style={{ backgroundColor: 'var(--bg-section)', padding: '0.75rem', borderRadius: '0.25rem', fontSize: '0.8rem', border: '1px solid var(--border)' }}>
           <p><strong>Journal:</strong> Author, Journal name, Volume, Page, Year</p>
           <p><strong>Book:</strong> Author, Book name, Publisher, Place, Year, Pages</p>
         </div>

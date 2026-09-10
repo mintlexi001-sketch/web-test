@@ -30,9 +30,9 @@ export default function Login() {
         navigate('/pending-approval', { state: { name: profileData.name } });
         return;
       }
-      if (profileData.status === 'inactive') {
+      if (profileData.status === 'suspended' || profileData.status === 'inactive') {
         await supabase.auth.signOut();
-        toast.error('Your account has been deactivated.');
+        toast.error('Your account has been suspended or deactivated. Please contact support for assistance.');
         setLoading(false);
         return;
       }

@@ -1,8 +1,8 @@
 import { useEffect, useState, useMemo } from 'react'
 import {
   Search, ChevronDown, ChevronUp, RefreshCw, Users, FileText,
-  AlertCircle, CheckCircle, RotateCcw, UserCheck,
-  Zap, UserMinus
+  RotateCcw, UserCheck, ArrowUpDown,
+  Zap, UserMinus, Mail, Calendar, CheckCircle2
 } from 'lucide-react'
 import { useToast } from '../../components/Toast'
 import { supabase } from '../../lib/supabase'
@@ -20,13 +20,15 @@ function WorkloadBadge({ count, showLabel = false }) {
   const c = workloadColor(count)
   return (
     <span style={{
-      display: 'inline-flex', alignItems: 'center', gap: '0.35rem',
+      display: 'inline-flex', alignItems: 'center', gap: '0.4rem',
       background: c.bg, color: c.text,
-      fontSize: '0.73rem', fontWeight: 700,
-      padding: '0.2rem 0.6rem', borderRadius: '9999px',
+      fontSize: '0.72rem', fontWeight: 700,
+      padding: '0.25rem 0.65rem', borderRadius: '9999px',
+      whiteSpace: 'nowrap', flexShrink: 0,
+      border: `1px solid ${c.dot}44`
     }}>
-      <span style={{ width: 7, height: 7, borderRadius: '50%', background: c.dot, flexShrink: 0 }} />
-      {count} {count === 1 ? 'paper assigned' : 'papers assigned'} {showLabel && `(${c.label})`}
+      <span style={{ width: 6, height: 6, borderRadius: '50%', background: c.dot, flexShrink: 0 }} />
+      {count} {count === 1 ? 'paper' : 'papers'} {showLabel && `(${c.label})`}
     </span>
   )
 }
@@ -67,9 +69,10 @@ export default function AssignReviewers() {
   const [assignments, setAssignments]       = useState({})   // { journalId: [{ id, reviewer_id, profiles }] }
   const [selected, setSelected]             = useState(null)
   const [search, setSearch]                 = useState('')
-  const [filter, setFilter]                 = useState('unassigned')
+  const [filter, setFilter]                 = useState('all')
   const [loading, setLoading]               = useState(true)
   const [viewMode, setViewMode]             = useState('papers') // 'papers' | 'reviewers'
+  const [sortOrder, setSortOrder]           = useState('oldest') // 'oldest' | 'newest'
 
   // Inline selection per paper card: { [journalId]: reviewerId }
   const [inlineSelectedReviewers, setInlineSelectedReviewers] = useState({})
@@ -89,13 +92,13 @@ export default function AssignReviewers() {
       supabase
         .from('journals')
         .select('id, title, abstract, keywords, file_url, created_at, resubmission_count, prev_admin_comments, prev_reviewer_comments, prev_reviewer_name, profiles(name, id), student_id')
-        .in('status', ['submitted', 'pending', 'under_review'])
+        .in('status', ['submitted', 'pending', 'rework', 'revision_required'])
         .order('resubmission_count', { ascending: false })
         .order('created_at', { ascending: false })
         .limit(500),
       supabase
         .from('profiles')
-        .select('id, name, role, status')
+        .select('id, name, email, role, status, created_at')
         .eq('role', 'reviewer')
         .eq('status', 'active')
         .limit(200),
@@ -152,10 +155,13 @@ export default function AssignReviewers() {
     }
 
     const journal = allJournals.find(j => j.id === journalId)
-    if (journal) {
-      setJournals(prev => prev.map(j => j.id === journalId ? { ...j, _justAssigned: true } : j))
-      if (selected === journalId) setSelected(null)
 
+    // Remove this paper from the list immediately — it's now under_review and belongs in Assigned Papers
+    setJournals(prev => prev.filter(j => j.id !== journalId))
+    setAllJournals(prev => prev.filter(j => j.id !== journalId))
+    if (selected === journalId) setSelected(null)
+
+    if (journal) {
       let emailFailed = false
       const revRes = await sendNotification('/api/notify/assign', {
         reviewerId: reviewer.id,
@@ -246,7 +252,7 @@ export default function AssignReviewers() {
       for (const a of assignList) {
         if (counts[a.reviewer_id] !== undefined) {
           counts[a.reviewer_id]++
-          papers[a.reviewer_id].push({ journalId: jid, title: journal?.title ?? 'Unknown', assignmentId: a.id, reviewerName: a.profiles?.name, author: journal?.profiles?.name })
+          papers[a.reviewer_id].push({ journalId: jid, title: journal?.title ?? 'Unknown', assignmentId: a.id, reviewerId: a.reviewer_id, acceptedAt: a.accepted_at, reviewerName: a.profiles?.name, author: journal?.profiles?.name })
         }
       }
     }
@@ -255,19 +261,21 @@ export default function AssignReviewers() {
 
   // ── Categorised journals ────────────────────────────────────────────────
   const categorised = useMemo(() => ({
-    unassigned: journals.filter(j => (assignments[j.id] ?? []).length === 0 && (j.resubmission_count ?? 0) === 0),
-    reworks:    journals.filter(j => (j.resubmission_count ?? 0) > 0),
-    assigned:   journals.filter(j => (assignments[j.id] ?? []).length > 0),
-    all:        journals,
+    reworks: journals.filter(j => (j.resubmission_count ?? 0) > 0),
+    all:     journals,
   }), [journals, assignments])
 
   const filteredJournals = useMemo(() => {
     const base = filter === 'all' ? journals : (categorised[filter] ?? [])
-    return base.filter(j =>
+    const searched = base.filter(j =>
       j.title.toLowerCase().includes(search.toLowerCase()) ||
       (j.profiles?.name ?? '').toLowerCase().includes(search.toLowerCase())
     )
-  }, [filter, journals, categorised, search])
+    return [...searched].sort((a, b) => {
+      const diff = new Date(a.created_at) - new Date(b.created_at)
+      return sortOrder === 'oldest' ? diff : -diff
+    })
+  }, [filter, journals, categorised, search, sortOrder])
 
   // Least loaded reviewer helper
   const leastLoadedReviewer = useMemo(() => {
@@ -338,9 +346,7 @@ export default function AssignReviewers() {
         {!loading && (
           <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', marginTop: '0.85rem' }}>
             {[
-              { icon: AlertCircle, label: 'Needs Reviewer', value: categorised.unassigned.length, color: '#dc2626' },
               { icon: RotateCcw,   label: 'Reworks',         value: categorised.reworks.length,    color: '#7c3aed' },
-              { icon: CheckCircle, label: 'Assigned',         value: categorised.assigned.length,   color: '#16a34a' },
               { icon: Users,       label: 'Active Reviewers', value: reviewers.length,              color: '#2563eb' },
             ].map(({ icon: Icon, label, value, color }) => (
               <div key={label} style={{
@@ -385,11 +391,27 @@ export default function AssignReviewers() {
               />
             </div>
 
-            <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
-              <FilterTab label="Unassigned" count={categorised.unassigned.length} active={filter === 'unassigned'} color="#dc2626" onClick={() => setFilter('unassigned')} />
-              <FilterTab label="Reworks"    count={categorised.reworks.length}    active={filter === 'reworks'}    color="#7c3aed" onClick={() => setFilter('reworks')} />
-              <FilterTab label="Assigned"   count={categorised.assigned.length}   active={filter === 'assigned'}   color="#16a34a" onClick={() => setFilter('assigned')} />
-              <FilterTab label="All Manuscripts" count={categorised.all.length}   active={filter === 'all'}        color="#2563eb" onClick={() => setFilter('all')} />
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
+                <FilterTab label="All Manuscripts" count={categorised.all.length}    active={filter === 'all'}     color="#2563eb" onClick={() => setFilter('all')} />
+                <FilterTab label="Reworks"         count={categorised.reworks.length} active={filter === 'reworks'} color="#7c3aed" onClick={() => setFilter('reworks')} />
+              </div>
+              {/* Sort toggle */}
+              <button
+                onClick={() => setSortOrder(s => s === 'oldest' ? 'newest' : 'oldest')}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: '0.35rem',
+                  padding: '0.3rem 0.75rem', borderRadius: '0.375rem',
+                  border: '1px solid var(--border)', background: 'var(--muted)',
+                  color: 'var(--foreground)', fontSize: '0.75rem', fontWeight: 600,
+                  cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0,
+                  transition: 'all 0.15s ease',
+                }}
+                title="Toggle sort order by submission date"
+              >
+                <ArrowUpDown size={13} />
+                {sortOrder === 'oldest' ? 'Oldest First' : 'Newest First'}
+              </button>
             </div>
           </div>
 
@@ -635,7 +657,7 @@ export default function AssignReviewers() {
                           <div style={{ background: '#faf5ff', border: '1px solid #e9d5ff', borderRadius: '0.625rem', padding: '0.85rem' }}>
                             <p style={{ fontSize: '0.68rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: '#7c3aed', marginBottom: '0.5rem' }}>Previous Round Feedback</p>
                             {j.prev_admin_comments && (
-                              <div style={{ marginBottom: '0.5rem' }}>
+                            <div style={{ marginBottom: '0.5rem' }}>
                                 <p style={{ fontSize: '0.7rem', color: '#6d28d9', fontWeight: 700, marginBottom: '0.15rem' }}>Editor's Comments</p>
                                 <p style={{ fontSize: '0.8rem', color: '#4c1d95', lineHeight: 1.5, whiteSpace: 'pre-wrap', margin: 0 }}>{j.prev_admin_comments}</p>
                               </div>
@@ -658,61 +680,171 @@ export default function AssignReviewers() {
         </div>
       ) : (
         /* ── VIEW MODE 2: REVIEWERS VIEW (Reviewer Directory & Active Workload Dashboard) ── */
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1.15rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))', gap: '1.25rem' }}>
           {reviewers.map(r => {
             const workload = reviewerWorkloads.counts[r.id] ?? 0
             const activeJournals = reviewerWorkloads.papers[r.id] ?? []
+            const initials = r.name ? r.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() : 'R'
+            const joinDate = r.created_at ? new Date(r.created_at).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' }) : null
 
             return (
               <div
                 key={r.id}
-                className="card"
-                style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}
+                style={{
+                  background: 'var(--card)',
+                  border: '1px solid var(--border)',
+                  borderRadius: '0.85rem',
+                  overflow: 'hidden',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  transition: 'all 0.2s ease',
+                }}
               >
-                <div className="card-content" style={{ padding: '1.15rem' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.5rem', marginBottom: '0.75rem' }}>
-                    <div>
-                      <h3 style={{ fontSize: '1rem', fontWeight: 700, margin: '0 0 0.2rem 0', color: 'var(--foreground)' }}>{r.name}</h3>
-                      <span className="badge badge-secondary" style={{ fontSize: '0.7rem' }}>Active Reviewer</span>
+                {/* Card Top Banner / Profile Header */}
+                <div style={{ padding: '1.1rem 1.2rem', borderBottom: '1px solid var(--border)', background: 'linear-gradient(180deg, var(--muted)30 0%, var(--card) 100%)' }}>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '0.75rem' }}>
+                    
+                    {/* Avatar & Basic Info */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', minWidth: 0, flex: 1 }}>
+                      <div style={{
+                        width: 44, height: 44, borderRadius: '50%',
+                        background: 'linear-gradient(135deg, #2563eb18, #3b82f635)',
+                        color: '#2563eb', fontWeight: 800, fontSize: '0.95rem',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        border: '1.5px solid #2563eb30', flexShrink: 0,
+                        boxShadow: '0 2px 4px rgba(37,99,235,0.08)'
+                      }}>
+                        {initials}
+                      </div>
+
+                      <div style={{ minWidth: 0, flex: 1 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
+                          <h3 style={{ fontSize: '1.02rem', fontWeight: 700, margin: 0, color: 'var(--foreground)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {r.name}
+                          </h3>
+                          <span style={{
+                            fontSize: '0.65rem', fontWeight: 700, color: '#15803d',
+                            background: '#d1fae5', border: '1px solid #a7f3d0',
+                            padding: '0.08rem 0.45rem', borderRadius: '9999px',
+                            display: 'inline-flex', alignItems: 'center', gap: '0.25rem', whiteSpace: 'nowrap'
+                          }}>
+                            <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#16a34a' }} />
+                            Active Reviewer
+                          </span>
+                        </div>
+
+                        {r.email && (
+                          <p style={{ fontSize: '0.76rem', color: 'var(--muted-foreground)', margin: '0.2rem 0 0 0', display: 'flex', alignItems: 'center', gap: '0.3rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            <Mail size={12} style={{ flexShrink: 0, opacity: 0.7 }} />
+                            {r.email}
+                          </p>
+                        )}
+                      </div>
                     </div>
 
-                    <div style={{ textAlign: 'right' }}>
-                      <WorkloadBadge count={workload} showLabel={true} />
-                    </div>
+                    {/* Workload Pill */}
+                    <WorkloadBadge count={workload} showLabel={true} />
                   </div>
 
-                  {/* Active Papers List with UNASSIGN BUTTON per paper */}
-                  <div style={{ marginTop: '0.85rem' }}>
-                    <p style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--muted-foreground)', marginBottom: '0.45rem' }}>
-                      Currently Assigned Manuscripts ({activeJournals.length})
-                    </p>
+                  {/* Quick Metrics Bar inside Header */}
+                  <div style={{
+                    display: 'flex', alignItems: 'center', gap: '1rem',
+                    marginTop: '0.85rem', paddingTop: '0.65rem',
+                    borderTop: '1px stroke var(--border)',
+                    borderTopStyle: 'dashed', borderTopWidth: '1px',
+                    fontSize: '0.72rem', color: 'var(--muted-foreground)'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                      <FileText size={13} style={{ color: '#2563eb' }} />
+                      <span>Assigned: <strong style={{ color: 'var(--foreground)', fontWeight: 700 }}>{workload}</strong></span>
+                    </div>
 
-                    {activeJournals.length === 0 ? (
-                      <p style={{ fontSize: '0.8rem', color: 'var(--muted-foreground)', fontStyle: 'italic', margin: 0, padding: '0.5rem 0' }}>
-                        No active manuscripts currently assigned to this reviewer.
-                      </p>
-                    ) : (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem', maxHeight: '240px', overflowY: 'auto' }}>
-                        {activeJournals.map(ap => (
-                          <div key={ap.journalId} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem', background: 'var(--muted)55', padding: '0.5rem 0.65rem', borderRadius: '0.4rem', border: '1px solid var(--border)' }}>
-                            <div style={{ minWidth: 0, flex: 1 }}>
-                              <p style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--foreground)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ap.title}</p>
-                              <p style={{ fontSize: '0.68rem', color: 'var(--muted-foreground)', margin: 0 }}>Author: {ap.author ?? '—'}</p>
-                            </div>
-                            <button
-                              onClick={() => triggerRemove(ap.journalId, ap.assignmentId, r.name, ap.title)}
-                              className="btn btn-outline btn-sm"
-                              style={{ padding: '0.2rem 0.55rem', fontSize: '0.7rem', color: '#dc2626', borderColor: '#fca5a5', display: 'inline-flex', alignItems: 'center', gap: '0.25rem', fontWeight: 600, flexShrink: 0 }}
-                              title={`Unassign ${r.name} from "${ap.title}"`}
-                            >
-                              <UserMinus size={12} />
-                              Unassign
-                            </button>
-                          </div>
-                        ))}
+                    {joinDate && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                        <Calendar size={13} style={{ opacity: 0.6 }} />
+                        <span>Joined: <strong style={{ color: 'var(--foreground)', fontWeight: 600 }}>{joinDate}</strong></span>
                       </div>
                     )}
                   </div>
+                </div>
+
+                {/* Card Body - Active Manuscripts List */}
+                <div style={{ padding: '1rem 1.2rem', flex: 1, display: 'flex', flexDirection: 'column' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.65rem' }}>
+                    <span style={{ fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--muted-foreground)', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                      <FileText size={13} style={{ opacity: 0.7 }} />
+                      Currently Assigned Manuscripts ({activeJournals.length})
+                    </span>
+                  </div>
+
+                  {activeJournals.length === 0 ? (
+                    <div style={{
+                      background: 'var(--muted)15',
+                      border: '1px dashed var(--border)',
+                      borderRadius: '0.6rem',
+                      padding: '1.25rem 1rem',
+                      textAlign: 'center',
+                      color: 'var(--muted-foreground)',
+                      marginTop: '0.2rem',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      gap: '0.35rem'
+                    }}>
+                      <CheckCircle2 size={20} style={{ color: '#10b981', opacity: 0.8 }} />
+                      <p style={{ fontSize: '0.8rem', margin: 0, fontWeight: 600, color: 'var(--foreground)' }}>
+                        Available for Assignment
+                      </p>
+                      <p style={{ fontSize: '0.72rem', margin: 0, color: 'var(--muted-foreground)' }}>
+                        No active manuscripts are currently assigned to this reviewer.
+                      </p>
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.55rem', maxHeight: '280px', overflowY: 'auto' }}>
+                      {activeJournals.map(ap => (
+                        <div key={ap.journalId} style={{
+                          display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.65rem',
+                          background: 'var(--card)', padding: '0.65rem 0.85rem', borderRadius: '0.5rem',
+                          border: '1px solid var(--border)', boxShadow: '0 1px 2px rgba(0,0,0,0.03)'
+                        }}>
+                          <div style={{ minWidth: 0, flex: 1 }}>
+                            <p style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--foreground)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {ap.title}
+                            </p>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.15rem', flexWrap: 'wrap' }}>
+                              <span style={{ fontSize: '0.7rem', color: 'var(--muted-foreground)' }}>
+                                Author: <strong style={{ fontWeight: 600, color: 'var(--foreground)' }}>{ap.author ?? '—'}</strong>
+                              </span>
+                              <span style={{
+                                fontSize: '0.64rem', fontWeight: 700,
+                                padding: '0.08rem 0.4rem', borderRadius: '9999px',
+                                background: ap.acceptedAt ? '#d1fae5' : '#fef3c7',
+                                color: ap.acceptedAt ? '#065f46' : '#92400e',
+                                border: `1px solid ${ap.acceptedAt ? '#a7f3d0' : '#fde68a'}`
+                              }}>
+                                {ap.acceptedAt ? '✓ Accepted' : '⏳ Pending'}
+                              </span>
+                            </div>
+                          </div>
+
+                          <button
+                            onClick={() => triggerRemove(ap.journalId, ap.assignmentId, r.name, ap.title, r.id, ap.acceptedAt)}
+                            className="btn btn-outline btn-sm"
+                            style={{
+                              padding: '0.28rem 0.65rem', fontSize: '0.72rem', color: '#dc2626', borderColor: '#fca5a5',
+                              background: '#fff5f5', display: 'inline-flex', alignItems: 'center', gap: '0.3rem',
+                              fontWeight: 600, flexShrink: 0, borderRadius: '0.375rem'
+                            }}
+                            title={ap.acceptedAt ? `Force revoke assignment of "${ap.title}"` : `Unassign ${r.name} from "${ap.title}"`}
+                          >
+                            <UserMinus size={12} />
+                            Unassign
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             )

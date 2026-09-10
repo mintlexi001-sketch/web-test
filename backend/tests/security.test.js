@@ -292,5 +292,47 @@ describe('Critical Bug Regression Tests (C-1 & C-2)', () => {
     expect(res.status).toBe(400);
     expect(res.body.error).toBe('Invalid or expired OTP');
   });
+
+  describe('Registration Account Status Guard Tests', () => {
+    it('400 — registration OTP request for suspended account returns suspension message', async () => {
+      setupFrom({
+        profiles: () => buildChain({ data: { id: 'user-1', name: 'Test User', role: 'student', status: 'suspended' }, error: null }),
+      });
+      const res = await request(app).post('/api/auth/register-otp')
+        .send({ email: 'user@gmail.com', role: 'student' });
+      expect(res.status).toBe(400);
+      expect(res.body.error).toMatch(/suspended or deactivated/);
+    });
+
+    it('400 — registration OTP request for reviewer role on suspended account returns suspension message', async () => {
+      setupFrom({
+        profiles: () => buildChain({ data: { id: 'user-1', name: 'Test User', role: 'reviewer', status: 'suspended' }, error: null }),
+      });
+      const res = await request(app).post('/api/auth/register-otp')
+        .send({ email: 'user@gmail.com', role: 'reviewer' });
+      expect(res.status).toBe(400);
+      expect(res.body.error).toMatch(/suspended or deactivated/);
+    });
+
+    it('400 — registration OTP request for pending account returns pending approval message', async () => {
+      setupFrom({
+        profiles: () => buildChain({ data: { id: 'user-1', name: 'Test User', role: 'reviewer', status: 'pending' }, error: null }),
+      });
+      const res = await request(app).post('/api/auth/register-otp')
+        .send({ email: 'user@gmail.com', role: 'reviewer' });
+      expect(res.status).toBe(400);
+      expect(res.body.error).toMatch(/pending administrator approval/);
+    });
+
+    it('400 — registration OTP request for active existing account returns existing user message', async () => {
+      setupFrom({
+        profiles: () => buildChain({ data: { id: 'user-1', name: 'Test User', role: 'student', status: 'active' }, error: null }),
+      });
+      const res = await request(app).post('/api/auth/register-otp')
+        .send({ email: 'user@gmail.com', role: 'student' });
+      expect(res.status).toBe(400);
+      expect(res.body.error).toMatch(/already exists/);
+    });
+  });
 });
 

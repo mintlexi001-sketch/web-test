@@ -4610,3 +4610,99 @@ html {
 .spin {
   animation: spin 0.8s linear infinite;
 }
+
+/* ── Reviewer Assigned Manuscripts Responsive Styles ───────────────────────── */
+.reviewer-filter-bar {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  overflow-x: auto;
+  padding-bottom: 0.35rem;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.reviewer-filter-bar::-webkit-scrollbar {
+  display: none;
+}
+
+.reviewer-card {
+  background: var(--card);
+  border-radius: 1rem;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-card);
+  padding: 1.35rem 1.6rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.25rem;
+  transition: all 0.2s ease;
+}
+
+.reviewer-card-info {
+  flex: 1 1 300px;
+  min-width: 0;
+}
+
+.reviewer-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  flex-shrink: 0;
+}
+
+.reviewer-btn-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+@media (max-width: 768px) {
+  .reviewer-card {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 1.15rem 1.2rem;
+    gap: 1rem;
+  }
+
+  .reviewer-card-actions {
+    justify-content: space-between;
+    width: 100%;
+    border-top: 1px solid var(--border);
+    padding-top: 0.85rem;
+    margin-top: 0.25rem;
+  }
+
+  .reviewer-btn-group {
+    width: 100%;
+  }
+
+  .reviewer-btn-group button {
+    flex: 1 1 50%;
+    justify-content: center;
+  }
+
+  .reviewer-card-actions a {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .reviewer-card-actions {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.65rem;
+  }
+
+  .reviewer-status-pill-wrap {
+    align-items: flex-start !important;
+    width: 100%;
+  }
+
+  .reviewer-status-pill {
+    width: 100%;
+    justify-content: center;
+  }
+}

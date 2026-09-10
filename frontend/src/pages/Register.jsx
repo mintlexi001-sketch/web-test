@@ -36,11 +36,12 @@ export default function Register() {
         await verifyRegisterOTP(form.email, otpValue, form.password, form.name, form.role);
         if (form.role !== 'reviewer') {
           await signIn(form.email, form.password);
+          toast.success('Account created and verified! Welcome to Science & Society.');
+          navigate('/student/dashboard', { replace: true });
+        } else {
+          toast.success('Registration submitted! Your reviewer account is pending admin approval.');
+          navigate('/pending-approval', { replace: true, state: { name: form.name } });
         }
-        toast.success(form.role === 'reviewer'
-          ? 'Submitted! Pending admin approval before you can log in.'
-          : 'Account created and verified!');
-        navigate('/login', { replace: true });
       } catch (err) {
         toast.error(err.message || 'OTP verification failed.');
       }

@@ -53,24 +53,31 @@ exports.sendRegisterOTP = async (req, res) => {
   const { email, role } = req.body;
 
   if (!validateEmail(email)) return res.status(400).json({ error: 'Invalid email format' });
-  if (!validateNotTempEmail(email)) return res.status(400).json({ error: 'Please use a standard email provider (Gmail, Outlook, etc.) or a college domain' });
+  if (!validateNotTempEmail(email)) return res.status(400).json({ error: 'Please use a standard email provider (Gmail, Outlook, Yahoo, etc.) or an official institutional/college email domain.' });
   // Admin accounts are created exclusively via promotion in the Admin Panel — not via public registration
-  if (!['student', 'reviewer'].includes(role)) return res.status(400).json({ error: 'Invalid role' });
+  if (!['student', 'reviewer'].includes(role)) return res.status(400).json({ error: 'Invalid role selected.' });
 
-  // M-2: Reject registration OTP if email already belongs to an existing account.
-  // Without this check, an unauthenticated caller could upsert into custom_otps keyed by
-  // an existing user's email and silently invalidate their in-flight password-reset OTP.
-  // Use a fake-delay response to remain account-enumeration-safe.
+  // Check if profile already exists for this email
   const { data: existingProfile } = await supabase
     .from('profiles')
-    .select('id')
+    .select('id, name, role, status')
     .eq('email', email)
-    .single();
+    .maybeSingle();
 
   if (existingProfile) {
-    // Account-enumeration-safe: same delay as a real OTP send, then a generic error
-    await new Promise(r => setTimeout(r, 300 + Math.random() * 200));
-    return res.status(400).json({ error: 'If this email is not registered, an OTP will be sent.' });
+    if (existingProfile.status === 'suspended' || existingProfile.status === 'inactive') {
+      return res.status(400).json({ 
+        error: 'This account has been suspended or deactivated. You cannot register a new account with this email address. Please contact support for assistance.' 
+      });
+    }
+    if (existingProfile.status === 'pending') {
+      return res.status(400).json({ 
+        error: 'An account with this email address has already been submitted and is currently pending administrator approval.' 
+      });
+    }
+    return res.status(400).json({ 
+      error: 'An account with this email address already exists. Please log in instead or reset your password.' 
+    });
   }
 
   // Check 60-second cooldown to prevent spamming OTP requests
@@ -99,13 +106,13 @@ exports.sendRegisterOTP = async (req, res) => {
 
   if (error) {
     console.error('DB Error:', error);
-    return res.status(500).json({ error: 'Failed to generate OTP' });
+    return res.status(500).json({ error: 'Failed to generate verification OTP. Please try again.' });
   }
 
   const html = generateOTPTemplate(otp, 'register');
   const sent = await sendMail(email, 'Verify your email - Science & Society', html);
 
-  if (!sent) return res.status(500).json({ error: 'Failed to send email' });
+  if (!sent) return res.status(500).json({ error: 'Failed to send email. Please verify your email address and try again.' });
 
   res.status(200).json({ message: 'OTP sent successfully' });
 };
@@ -114,13 +121,36 @@ exports.verifyRegisterOTP = async (req, res) => {
   let { email, otp, password, name, role } = req.body;
 
   if (!validateEmail(email)) return res.status(400).json({ error: 'Invalid email format' });
-  if (!validateString(otp, 6) || otp.length !== 6) return res.status(400).json({ error: 'Invalid OTP' });
-  if (!validatePassword(password)) return res.status(400).json({ error: 'Password must be at least 8 characters, with 1 uppercase letter and 1 number' });
-  if (!validateString(name, 100)) return res.status(400).json({ error: 'Invalid name' });
+  if (!validateString(otp, 6) || otp.length !== 6) return res.status(400).json({ error: 'Invalid 6-digit OTP' });
+  if (!validatePassword(password)) return res.status(400).json({ error: 'Password must be at least 8 characters long, containing at least one uppercase letter and one number.' });
+  if (!validateString(name, 100)) return res.status(400).json({ error: 'Please enter a valid name' });
   // Admin accounts are created exclusively via promotion — block any attempt to self-register as admin
-  if (!['student', 'reviewer'].includes(role)) return res.status(400).json({ error: 'Invalid role' });
+  if (!['student', 'reviewer'].includes(role)) return res.status(400).json({ error: 'Invalid role selected.' });
   
   name = name.trim(); // Sanitize name
+
+  // Check if account already exists before creating user
+  const { data: existingProfile } = await supabase
+    .from('profiles')
+    .select('id, name, role, status')
+    .eq('email', email)
+    .maybeSingle();
+
+  if (existingProfile) {
+    if (existingProfile.status === 'suspended' || existingProfile.status === 'inactive') {
+      return res.status(400).json({ 
+        error: 'This account has been suspended or deactivated. Account creation is not permitted for this email address.' 
+      });
+    }
+    if (existingProfile.status === 'pending') {
+      return res.status(400).json({ 
+        error: 'An account with this email address is already awaiting administrator approval.' 
+      });
+    }
+    return res.status(400).json({ 
+      error: 'An account with this email address already exists. Please log in instead.' 
+    });
+  }
 
   const { data, error } = await supabase
     .from('custom_otps')
@@ -129,7 +159,7 @@ exports.verifyRegisterOTP = async (req, res) => {
     .single();
 
   if (error || !data || new Date() > new Date(data.expires_at)) {
-    return res.status(400).json({ error: 'Invalid or expired OTP' });
+    return res.status(400).json({ error: 'Invalid or expired OTP. Please request a new verification code.' });
   }
 
   if (!timingSafeCompare(data.otp, hashOTP(otp))) {
@@ -139,7 +169,7 @@ exports.verifyRegisterOTP = async (req, res) => {
     } else {
       await supabase.from('custom_otps').update({ attempts }).eq('email', email);
     }
-    return res.status(400).json({ error: 'Invalid or expired OTP' });
+    return res.status(400).json({ error: 'Invalid or expired OTP. Please check your code.' });
   }
 
   // Create user securely (bypassing Supabase default email)
@@ -150,6 +180,9 @@ exports.verifyRegisterOTP = async (req, res) => {
   });
 
   if (authError) {
+    if (authError.message?.toLowerCase().includes('already') || authError.message?.toLowerCase().includes('exists')) {
+      return res.status(400).json({ error: 'An account with this email address already exists. Please log in instead.' });
+    }
     return res.status(400).json({ error: authError.message });
   }
 
@@ -176,7 +209,7 @@ exports.verifyRegisterOTP = async (req, res) => {
     }
     if (!rollbackSuccess) console.error(`CRITICAL: Failed to rollback ghost auth user ${authData.user.id}`);
     
-    return res.status(500).json({ error: 'Failed to create profile' });
+    return res.status(500).json({ error: 'Failed to create profile. Please try again.' });
   }
 
   // Delete OTP
@@ -189,15 +222,30 @@ exports.sendResetOTP = async (req, res) => {
   const { email } = req.body;
 
   if (!validateEmail(email)) return res.status(400).json({ error: 'Invalid email format' });
-  if (!validateNotTempEmail(email)) return res.status(400).json({ error: 'Please use a standard email provider or a college domain' });
+  if (!validateNotTempEmail(email)) return res.status(400).json({ error: 'Please use a standard email provider or an institutional/college email domain.' });
 
   // Ensure email exists before sending reset OTP
-  const { data: existingUser } = await supabase.from('profiles').select('id').eq('email', email).single();
-  // SEC-015: Prevent account enumeration by returning a generic success message
-  if (!existingUser) {
-    // Deliberate delay to prevent timing attacks, then return fake success
+  const { data: existingUser } = await supabase
+    .from('profiles')
+    .select('id, status')
+    .eq('email', email)
+    .maybeSingle();
+
+  if (existingUser) {
+    if (existingUser.status === 'suspended' || existingUser.status === 'inactive') {
+      return res.status(400).json({ 
+        error: 'This account has been suspended or deactivated. Password reset is disabled. Please contact support for assistance.' 
+      });
+    }
+    if (existingUser.status === 'pending') {
+      return res.status(400).json({ 
+        error: 'Your account registration is currently pending administrator approval.' 
+      });
+    }
+  } else {
+    // Deliberate delay to prevent timing attacks, then return fake success for non-existent emails
     await new Promise(resolve => setTimeout(resolve, Math.random() * 500 + 500));
-    return res.status(200).json({ message: 'If this email is registered, a reset code has been sent.' });
+    return res.status(200).json({ message: 'If an active account exists with this email address, a password reset code has been sent.' });
   }
 
   const otp = generateOTP();
@@ -284,8 +332,18 @@ exports.sendEmailChangeOTP = async (req, res) => {
   if (!validateNotTempEmail(newEmail)) return res.status(400).json({ error: 'Please use a standard email provider (Gmail, Outlook, etc.) or a college domain' });
 
   // Ensure email is not already taken
-  const { data: existingUser } = await supabase.from('profiles').select('id').eq('email', newEmail).single();
-  if (existingUser) return res.status(400).json({ error: 'Email already in use' });
+  const { data: existingUser } = await supabase
+    .from('profiles')
+    .select('id, status')
+    .eq('email', newEmail)
+    .maybeSingle();
+
+  if (existingUser) {
+    if (existingUser.status === 'suspended' || existingUser.status === 'inactive') {
+      return res.status(400).json({ error: 'This email address belongs to a suspended or deactivated account.' });
+    }
+    return res.status(400).json({ error: 'This email address is already in use by another account.' });
+  }
 
   const otp = generateOTP();
   const expiresAt = new Date(Date.now() + 10 * 60000).toISOString();

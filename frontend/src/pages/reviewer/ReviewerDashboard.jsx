@@ -20,7 +20,7 @@ export default function ReviewerDashboard() {
     // Fetch assignments for this reviewer with journal info
     const { data: assignments, error: assignErr } = await supabase
       .from('assignments')
-      .select(`journals ( id, title, review_level, created_at )`)
+      .select(`id, accepted_at, created_at, journals ( id, title, review_level, created_at )`)
       .eq('reviewer_id', user.id)
 
     if (assignErr) {
@@ -30,13 +30,12 @@ export default function ReviewerDashboard() {
       return
     }
 
-    const journals = (assignments ?? []).map(a => a.journals).filter(Boolean)
-    const journalIds = journals.map(j => j.id)
+    const journalIds = (assignments ?? []).map(a => a.journals?.id).filter(Boolean)
 
     // Check which ones this reviewer has already reviewed
     const { data: reviewedData, error: reviewErr } = await supabase
       .from('reviews')
-      .select('journal_id')
+      .select('journal_id, created_at')
       .eq('reviewer_id', user.id)
       .in('journal_id', journalIds.length ? journalIds : ['none'])
 
@@ -47,17 +46,33 @@ export default function ReviewerDashboard() {
       return
     }
 
-    const reviewedSet = new Set((reviewedData ?? []).map(r => r.journal_id))
+    const reviewsMap = {}
+    for (const r of (reviewedData ?? [])) {
+      reviewsMap[r.journal_id] = r
+    }
 
-    setItems(journals.map(j => ({
-      ...j,
-      reviewStatus: reviewedSet.has(j.id) ? 'completed' : 'pending',
-    })))
+    setItems((assignments ?? []).filter(a => a.journals).map(a => {
+      let reviewStatus = 'pending_accept'
+      if (!a.accepted_at) {
+        reviewStatus = 'pending_accept'
+      } else {
+        const rev = reviewsMap[a.journals.id]
+        if (rev && new Date(rev.created_at) >= new Date(a.created_at)) {
+          reviewStatus = 'completed'
+        } else {
+          reviewStatus = 'pending'
+        }
+      }
+      return {
+        ...a.journals,
+        reviewStatus,
+      }
+    }))
     setLoading(false)
   }
 
   const total = items.length
-  const pending = items.filter(j => j.reviewStatus === 'pending').length
+  const pending = items.filter(j => j.reviewStatus === 'pending' || j.reviewStatus === 'pending_accept').length
   const completed = items.filter(j => j.reviewStatus === 'completed').length
 
   const stats = [
@@ -66,7 +81,7 @@ export default function ReviewerDashboard() {
     { label: 'Completed', value: completed, icon: CheckCircle, color: '#059669' },
   ]
 
-  const pendingJournals = items.filter(j => j.reviewStatus === 'pending').slice(0, 3)
+  const pendingJournals = items.filter(j => j.reviewStatus === 'pending_accept' || j.reviewStatus === 'pending').slice(0, 3)
 
   return (
     <div className="space-y-6">
@@ -117,13 +132,15 @@ export default function ReviewerDashboard() {
               <div>
                 <h3 className="font-medium">{j.title}</h3>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginTop: '0.25rem' }}>
-                  <span className="text-xs text-muted">Level {j.review_level} Review</span>
+                  <span className="text-xs text-muted">Submitted Date: {new Date(j.created_at).toLocaleDateString()}</span>
                 </div>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <span className="status-pending">Assigned Review</span>
-                <Link to={`/reviewer/review/${j.id}`} className="btn btn-primary btn-sm">
-                  Review
+                <span className={j.reviewStatus === 'pending_accept' ? 'status-under_review' : 'status-pending'}>
+                  {j.reviewStatus === 'pending_accept' ? 'Pending Acceptance' : 'Assigned Review'}
+                </span>
+                <Link to="/reviewer/assigned" className="btn btn-primary btn-sm">
+                  View
                 </Link>
               </div>
             </div>
